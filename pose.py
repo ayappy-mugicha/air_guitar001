@@ -1,5 +1,6 @@
 import cv2
 from ultralytics import YOLO
+import mqttpub
 
 video_path = 0
 capture = cv2.VideoCapture(video_path)
@@ -85,20 +86,24 @@ def process_frame(frame):
     # 右手
     right_elbow = keypoints[8]
     right_wrist = keypoints[10]
+    right_shoulder = keypoints[6]
     
     # 右腰
     right_hip = keypoints[12]
     
     # 右手腰の下
-    if right_hip[1] > right_wrist[1]:
+    if (right_wrist[1] > right_shoulder[1]) and right_shoulder[0] < right_wrist[0]:
         
         # ダウンストローク
         if right_wrist[1] > right_elbow[1]:
             down_raised = True
+            mqttpub.run("down stroke")
+            
             
         # アップストローク
-        if right_wrist[1] < right_elbow[1]:
+        if right_wrist[1] < right_elbow[1] > right_shoulder[1]:
             up_raised = True
+            mqttpub.run("up stroke")
 
 
         # 判定に応じた表示
@@ -113,8 +118,7 @@ def process_frame(frame):
             thickness=4,
             lineType=cv2.LINE_AA,
         )
-
-    if up_raised:
+    elif up_raised:
         cv2.putText(
             annotated_frame,
             "up stroke",
