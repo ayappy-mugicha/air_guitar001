@@ -34,44 +34,99 @@ def process_frame(frame):
 
     annotated_frame = results[0].plot()
 
+    if results[0].keypoints is None or len(results[0].keypoints.xy) == 0:
+        print("人物が検出されませんでした")
+        return annotated_frame
     # 姿勢分析結果のキーポイントを取得する
-    keypoints = results[0].keypoints.xy  # 座標
-    confs = results[0].keypoints.conf  # 信頼度
+    # keypoints = results[0].keypoints.xy  # 座標
+    # confs = results[0].keypoints.conf  # 信頼度
 
-    for keypoint in keypoints:
-        for idx, point in enumerate(keypoint):
-            x, y = int(point[0]), int(point[1])
-            score = confs[0][idx]
+    # for keypoint in keypoints:
+    # for idx, point in enumerate(keypoint):
+    # x, y = int(point[0]), int(point[1])
 
-            # スコアが0.5以下なら描画しない
-            if score < 0.5:
-                continue
+    keypoints = results[0].keypoints.xy[0]  # 1人目のキーポイント
+    confs = results[0].keypoints.conf[0]   # 1人目の信頼度
 
-            print(
-                f"Keypoint Name={KEYPOINTS_NAMES[idx]}, X={x}, Y={y}, Score={score:.4f}")
+    for idx, (point, score) in enumerate(zip(keypoints, confs)):
+        x, y = int(point[0]), int(point[1])
+        if score < 0.5:
+            continue
 
-            # 紫の四角を描画
-            cv2.rectangle(
-                annotated_frame,
-                (x, y),
-                (x + 3, y + 3),
-                (255, 0, 255),
-                cv2.FILLED,
-                cv2.LINE_AA,
-            )
+        print(
+            f"Keypoint Name={KEYPOINTS_NAMES[idx]}, X={x}, Y={y}, Score={score:.4f}")
 
-            # キーポイントの部位名称を描画
-            cv2.putText(
-                annotated_frame,
-                KEYPOINTS_NAMES[idx],
-                (x + 5, y),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (255, 0, 255),
-                1,
-                cv2.LINE_AA,
-            )
+        # 紫の四角を描画
+        cv2.rectangle(
+            annotated_frame,
+            (x, y),
+            (x + 3, y + 3),
+            (255, 0, 255),
+            cv2.FILLED,
+            cv2.LINE_AA,
+        )
 
+        # キーポイントの部位名称を描画
+        cv2.putText(
+            annotated_frame,
+            KEYPOINTS_NAMES[idx],
+            (x + 5, y),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (255, 0, 255),
+            1,
+            cv2.LINE_AA,
+        )
+
+    # ストロークフラグ
+    down_raised = False
+    up_raised = False
+
+    # 右手
+    right_elbow = keypoints[8]
+    right_wrist = keypoints[10]
+    
+    # 右腰
+    right_hip = keypoints[12]
+    
+    # 右手腰の下
+    if right_hip[1] > right_wrist[1]:
+        
+        # ダウンストローク
+        if right_wrist[1] > right_elbow[1]:
+            down_raised = True
+            
+        # アップストローク
+        if right_wrist[1] < right_elbow[1]:
+            up_raised = True
+
+
+        # 判定に応じた表示
+    if down_raised:
+        cv2.putText(
+            annotated_frame,
+            "down stroke",
+            (50, 150),
+            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+            fontScale=1.5,
+            color=(0, 128, 255),
+            thickness=4,
+            lineType=cv2.LINE_AA,
+        )
+
+    if up_raised:
+        cv2.putText(
+            annotated_frame,
+            "up stroke",
+            (50, 150),
+            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+            fontScale=1.5,
+            color=(0, 128, 255),
+            thickness=4,
+            lineType=cv2.LINE_AA,
+        )
+
+    
     print("------------------------------------------------------")
     return annotated_frame
 
