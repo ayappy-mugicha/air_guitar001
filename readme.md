@@ -1,6 +1,7 @@
 pip install paho-mqtt
-gcc servo.c -o servo
-gcc servo.c -shared -o servo
+
+<!-- gcc -c -fPIC servo.c -o libservo.o -->
+gcc -shared -o libservo.so servo.c
 
 sudo apt update
 sudo apt install git-core
