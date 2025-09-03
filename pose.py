@@ -29,10 +29,12 @@ KEYPOINTS_NAMES = [
 model = YOLO("yolov8n-pose.pt")
 topic = "guitar/stroke"
 client = mqttpub.publish_init()
+last_stroke_state = None
 
 
 def process_frame(frame):
     try:# 推論を実行
+        global last_stroke_state 
         results = model(frame)
 
         annotated_frame = results[0].plot()
@@ -90,8 +92,7 @@ def process_frame(frame):
         right_wrist = keypoints[10]
         right_shoulder = keypoints[6]
         
-        # 右腰
-        right_hip = keypoints[12]
+        current_stroke_state = None
         
         # 右手腰の下
         if (right_wrist[1] > right_shoulder[1]) and right_shoulder[0] < right_wrist[0]:
@@ -99,15 +100,24 @@ def process_frame(frame):
             # ダウンストローク
             if right_wrist[1] > right_elbow[1]:
                 down_raised = True
-                mqttpub.publish(client,topic,"down stroke")
-                
+                current_stroke_state = "down"
                 
             # アップストローク
             if right_wrist[1] < right_elbow[1] > right_shoulder[1]:
                 up_raised = True
-                mqttpub.publish(client, topic,"up stroke")
+                current_stroke_state = "up" 
+                
 
-
+        if current_stroke_state != last_stroke_state:
+            if current_stroke_state == "down":
+                mqttpub.publish(client, topic, 0)
+                print("--- ダウンストロークを送信 ---")
+            elif current_stroke_state == "up":
+                mqttpub.publish(client, topic, 1)
+                print("--- アップストロークを送信 ---")
+            
+            # 状態を更新
+            last_stroke_state = current_stroke_state
             # 判定に応じた表示
         if down_raised:
             cv2.putText(
