@@ -13,18 +13,20 @@ int setup(void) {
     // PWMピンとしてGPIOピンをセットアップ
     // softPwm.hを使用
     softPwmCreate(SERVO_PIN, 0, 200); // 0〜200の範囲でPWMを生成
+    softPwmWrite(SERVO_PIN, 5);
+    printf("サーボモーターのセットアップが完了しました。\n");
     return 0;
 }
 int up(void) {
     softPwmWrite(SERVO_PIN, 25);
     printf("角度: 180度\n");
-    delay(100); // 1秒待機
+    // delay(100); // 1秒待機
     return 0;
 }
 int down(void) {
     softPwmWrite(SERVO_PIN, 5);
     printf("角度: 0度\n");
-    delay(100); // 1秒待機
+    // delay(100); // 1秒待機
     return 0;
 }
 int main(void) {
@@ -34,4 +36,4 @@ int main(void) {
         up();
     }
     return 0;
-}
+}x

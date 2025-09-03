@@ -1,16 +1,20 @@
 from mqttsys import host, port, connect_mqtt
-
+from share_queue import msg_queue # キューをインポート
 topic = 'guitar/stroke'
-payload = []
+# payload = []
+payload = None
 
 def on_message(client, userdata, msg):
     # print(f"{msg.topic} : {msg.payload.decode()}" )
-    payload.append(msg.payload.decode())
-
-def get_msg():
-    if payload:
-        return payload.pop(0)
-    return None
+    # payload.append(msg.payload.decode())
+    msg_queue.put(msg.payload.decode()) # キューにメッセージを追加
+    
+# def get_msg():
+#     if payload:
+#         # return payload.pop(0)
+#         return payload
+        
+    # return None
 
 def mqtt_init():
     client = connect_mqtt(host,port)
