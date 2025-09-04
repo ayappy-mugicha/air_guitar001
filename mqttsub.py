@@ -1,6 +1,6 @@
 from mqttsys import host, port, connect_mqtt
 from share_queue import msg_queue # キューをインポート
-topic = 'guitar/stroke'
+# topic = 'guitar/stroke'
 
 def on_message(client, userdata, msg):
     print(f"{msg.topic} : {msg.payload.decode()}" ) # 受信したメッセージを表示
@@ -19,7 +19,7 @@ def stop_mqtt(client):
     print("mqtt_bye!!")
 
 
-def run(topoic=topic):
+def run(topic):
     print("this is mqttsub")
     client = mqtt_init(topic)
     
