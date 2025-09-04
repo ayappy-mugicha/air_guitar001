@@ -1,49 +1,45 @@
 import mqttsub
 import ctypes
-import subprocess
 import os
-# import queue
 from share_queue import msg_queue # キューをインポート
+topic = 'guitar/stroke'
 
-
-# msg_queue = queue.Queue()
 def get_c():
-    lib_path =  os.path.join(os.path.dirname(__file__), "libservo.so")
-    # lib_path = 'libservo.so'
-    # lib_path = './servo'
-    servo = ctypes.CDLL(lib_path)
-    # result = subprocess.run([lib_path], capture_output=True, text=True, check=True)
+    # Cの関数を取得
+    lib_path =  os.path.join(os.path.dirname(__file__), "libservo.so") # 共有ライブラリのパス
+    servo = ctypes.CDLL(lib_path) # Cの共有ライブラリをロード
     # my_clib.add_numbers.argtypes = [ctypes.c_int, ctypes.c_int]
-    servo.main.restype = ctypes.c_int
+    
+    servo.main.restype = ctypes.c_int # 戻り値の型を指定
+    servo.setup.restype = ctypes.c_int # 戻り値の型を指定
+    servo.up.restype = ctypes.c_int # 戻り値の型を指定
+    servo.down.restype = ctypes.c_int # 戻り値の型を指定
     return servo
 
 def move_motion(msg,servo):
-    
-    print(msg)
     msg = int(msg)
-    if msg == 0:
+    # print(msg)
+    if msg == 0: # 0なら下げる
         servo.down()
-    elif msg == 1:
+    elif msg == 1: # 1なら上げる
         servo.up()
-    # servo.stop()
-    # servo.main()
     
 def run():
     try:
-        servo=get_c()
-        servo.setup()
+        servo=get_c() # Cの関数を取得
+        servo.setup() # サーボのセットアップ
         while True:
-            # msg = mqttsub.get_msg() 
             msg = msg_queue.get() # キューからメッセージを取得（ブロッキング）
-            if not msg:
+            if not msg: # 空メッセージは無視
                 continue 
-            if msg:
+            
+            if msg: # メッセージがある場合
                 move_motion(msg,servo)
     except Exception as e:
         print(e)
     # finally:
         # mqttsub.stop_mqtt()   
 if __name__ == "__main__":
-    mqttsub.run()
+    mqttsub.run(topic) # MQTTサブスクライバーを開始
     run()
 
