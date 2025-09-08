@@ -15,7 +15,7 @@ def publish_stop(client):
     client.disconnect() # 接続を切断
 
 def publish(client, topic, message):
-    result = client.publish(topic, message, qos=1)
+    result = client.publish(topic, message, qos=1) # QoSレベル1でメッセージを送信(低遅延)
     status = result[0]
     if status == 0:
         print(f"'{topic}'{message}...")
