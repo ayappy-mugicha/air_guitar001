@@ -1,29 +1,39 @@
 import mqttsub
 from getcmodule import get_c
 import os
+from time import sleep
 from share_queue import msg_queue # キューをインポート
 topic = 'guitar/stroke'
+# lastest_stroke = None
 
 def move_motion(msg,servo):
     msg = int(msg)
-    # print(msg)
+    
+    print("-------------------------ストローク--------------------")
     if msg == 0: # 0なら下げる
         servo.down()
+        
     elif msg == 1: # 1なら上げる
         servo.up()
-    
+    print("-------------------------ストローク--------------------")
 def run():
     try:
+        lastest_stroke = None
+        current_stroke = None
         lib_path =  os.path.join(os.path.dirname(__file__), "libservo.so") # 共有ライブラリのパス
         servo=get_c(lib_path) # Cの関数を取得
         servo.setup() # サーボのセットアップ
+        
         while True:
+            # sleep(0.2)
             msg = msg_queue.get() # キューからメッセージを取得（ブロッキング）
-            if not msg: # 空メッセージは無視
-                continue 
-            
-            if msg: # メッセージがある場合
-                move_motion(msg,servo)
+            current_stroke = msg
+            if current_stroke != lastest_stroke:
+                lastest_stroke = current_stroke
+                print(lastest_stroke)
+                if msg:  # メッセージがある場合
+                    move_motion(msg,servo)
+                    
     except Exception as e:
         print(e)
     # finally:
