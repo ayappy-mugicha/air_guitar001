@@ -51,8 +51,13 @@ def main():
             amt = st.button(f"A{text_minor_triad}")
             emt = st.button(f"E{text_minor_triad}")
             fmt = st.button(f"F{text_minor_triad}")
-            bmt = st.button(f"B{text_minor_triad}")
-
+            
+    with st.container(horizontal=True, horizontal_alignment="center"): # 中央置き
+        open = st.button(f"full open")
+    
+    if open:
+        send("open")
+        return 0
     # メジャーコード
     if cMt:
         send(f"c{major_triad}")
@@ -85,9 +90,7 @@ def main():
     elif fmt:
         send(f"f{minor_triad}")
         return 0
-    elif bmt:
-        send(f"g{minor_triad}")
-        return 0
+
     
     
 if __name__ == "__main__":
