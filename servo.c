@@ -1,7 +1,7 @@
-#include <wiringPi.h> // GPIO制御用ライブラリ
-#include <softPwm.h> // ソフトウェアPWM用ライブラリ
-#include <stdio.h> // 標準入出力用ライブラリ
-#define SERVO_PIN 18 // PWMピンとして使用できる任意のGPIOピン GPIO18
+# include <wiringPi.h> // GPIO制御用ライブラリ
+# include <softPwm.h> // ソフトウェアPWM用ライブラリ
+# include <stdio.h> // 標準入出力用ライブラリ
+# define SERVO_PIN 18 // PWMピンとして使用できる任意のGPIOピン GPIO18
 
 // 25 = 180度
 // 5 = 0度
