@@ -16,8 +16,8 @@ def on_message(client, userdata, msg):
 def connect_mqtt(host: str, port:int):
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     
-    client.on_connect = on_connect
-    client.on_message = on_message
+    client.on_connect = on_connect # 接続時のコールバック関数を登録
+    client.on_message = on_message # メッセージ受信時のコールバック関数を登録
     
     client.connect(host,port, 60)
     return client
