@@ -4,26 +4,29 @@ import os
 from share_queue import msg_queue # キューをインポート
 topic = 'guitar/code'
 
-def move_motion(msg,servo):
-    # msg = int(msg)
-    # print(msg)
+def move_motion(msg,solenoid):
+    print("-------------------------コード--------------------")
     if msg == "c": # 0なら下げる
-        servo.down()
+        solenoid.C()
     elif msg == "a": # 1なら上げる
-        servo.up()
+        solenoid.A()
+    print("-------------------------コード--------------------")
     
 def run():
     try:
-        lib_path =  os.path.join(os.path.dirname(__file__), "libservo.so") # 共有ライブラリのパス
-        servo=get_c(lib_path) # Cの関数を取得
-        servo.setup() # サーボのセットアップ
+        lastest_stroke = None
+        current_stroke = None
+        lib_path =  os.path.join(os.path.dirname(__file__), "libsolenoid.so") # 共有ライブラリのパス
+        solenoid=get_c(lib_path) # Cの関数を取得
+        # servo.setup() # サーボのセットアップ
         while True:
             msg = msg_queue.get() # キューからメッセージを取得（ブロッキング）
-            if not msg: # 空メッセージは無視
-                continue 
-            
-            if msg: # メッセージがある場合
-                move_motion(msg,servo)
+            current_stroke = msg
+            if current_stroke != lastest_stroke:
+                lastest_stroke = current_stroke
+                print(lastest_stroke)
+                if msg:  # メッセージがある場合
+                    move_motion(msg,solenoid)
     except Exception as e:
         print(e)
     # finally:
