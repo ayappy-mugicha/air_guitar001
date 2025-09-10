@@ -47,11 +47,11 @@ def main():
     # マイナーコード
     with minor:
         with st.container(horizontal=True, horizontal_alignment="right"): # 右置き
-            cmt = st.button(f"C{text_minor_triad}")
+            dmt = st.button(f"D{text_minor_triad}")
             amt = st.button(f"A{text_minor_triad}")
             emt = st.button(f"E{text_minor_triad}")
             fmt = st.button(f"F{text_minor_triad}")
-            gmt = st.button(f"G{text_minor_triad}")
+            bmt = st.button(f"B{text_minor_triad}")
 
     # メジャーコード
     if cMt:
@@ -71,10 +71,11 @@ def main():
         return 0
     elif dMt:
         send(f"d{major_triad}")
+        return 0
                 
     # マイナーコード
-    if cmt:
-        send(f"c{minor_triad}")
+    if dmt:
+        send(f"d{minor_triad}")
     elif amt:
         send(f"a{minor_triad}")
         return 0
@@ -84,7 +85,7 @@ def main():
     elif fmt:
         send(f"f{minor_triad}")
         return 0
-    elif gmt:
+    elif bmt:
         send(f"g{minor_triad}")
         return 0
     
