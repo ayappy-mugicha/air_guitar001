@@ -1,10 +1,17 @@
 import mqttsub
-from getcmodule import get_c
+# from getcmodule import get_c
+import ctypes
 import os
 from time import sleep
 from share_queue import msg_queue # キューをインポート
 topic = 'guitar/stroke'
 # lastest_stroke = None
+
+def get_c(lib_path):
+    # Cの関数を取得
+    lib_C = ctypes.CDLL(lib_path) # Cの共有ライブラリをロード
+    lib_C.main.restype = ctypes.c_int # 戻り値の型を指定
+    return lib_C
 
 def move_motion(msg,servo):
     msg = int(msg)
