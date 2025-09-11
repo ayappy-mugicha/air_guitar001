@@ -60,10 +60,10 @@ def main():
         return 0
     # メジャーコード
     if cMt:
-        send(f"c{major_triad}")
+        send(f"c")
         return 0
     elif aMt:
-        send(f"a{major_triad}")
+        send(f"a")
         return 0
     elif eMt:
         send(f"e{major_triad}")
