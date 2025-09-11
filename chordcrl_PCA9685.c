@@ -91,11 +91,11 @@ long map(long x, long in_min, long in_max, long out_min, long out_max) {
 }
 void openPWM(int channel) {
     setPWM(channel, 0, map(open, 0, 180, SERVO_MIN, SERVO_MAX));
-    printf("open sring %d\n", channel);
+    printf("open chord channel %d\n", channel);
 }
 
 // メジャーコードの関数
-int Cmajor(int chord) {
+int presschord(int chord) {
     printf("code is C\n");
 
     for (int i = 0; i <= 9; i++){ // セレクトされてるコード以外を開放する
@@ -110,144 +110,7 @@ int Cmajor(int chord) {
     delay(1000);
     return 0;
 }
-int Amajor(int chord) {
-    printf("code is A\n");
 
-    for (int i = 0; i <= 9; i++){ // セレクトされてるコード以外を開放する
-        if (i != chord){ 
-            openPWM(i); 
-            return 0;
-        }
-    }
-    setPWM(chord, 0, map(angle, 0, 180, SERVO_MIN, SERVO_MAX)); // PWMで動かす
-    printf(" %d を押しました。角度： %d \n", chord, angle);
-
-    delay(1000);
-    return 0;
-}
-int Emajor(int chord) {
-    printf("code is E\n");
-
-    for (int i = 0; i <= 9; i++){ // セレクトされてるコード以外を開放する
-        if (i != chord){ 
-            openPWM(i); 
-            return 0;
-        }
-    }
-    setPWM(chord, 0, map(angle, 0, 180, SERVO_MIN, SERVO_MAX)); // PWMで動かす
-    printf(" %d を押しました。角度： %d \n", chord, angle);
-
-    delay(1000);
-    return 0;
-}
-int Gmajor(int chord) {
-    printf("code is G\n");
-
-    for (int i = 0; i <= 9; i++){ // セレクトされてるコード以外を開放する
-        if (i != chord){ 
-            openPWM(i); 
-            return 0;
-        }
-    }
-    setPWM(chord, 0, map(angle, 0, 180, SERVO_MIN, SERVO_MAX)); // PWMで動かす
-    printf(" %d を押しました。角度： %d \n", chord, angle);
-
-    delay(1000);
-    return 0;
-}
-int Fmajor(int chord) {
-    printf("code is F\n");
-
-    for (int i = 0; i <= 9; i++){ // セレクトされてるコード以外を開放する
-        if (i != chord){ 
-            openPWM(i); 
-            return 0;
-        }
-    }
-    setPWM(chord, 0, map(angle, 0, 180, SERVO_MIN, SERVO_MAX)); // PWMで動かす
-    printf(" %d を押しました。角度： %d \n", chord, angle);
-
-    delay(1000);
-    return 0;
-}
-int Dmajor(int chord) {
-    printf("code is D\n");
-
-    for (int i = 0; i <= 9; i++){ // セレクトされてるコード以外を開放する
-        if (i != chord){ 
-            openPWM(i); 
-            return 0;
-        }
-    }
-    setPWM(chord, 0, map(angle, 0, 180, SERVO_MIN, SERVO_MAX)); // PWMで動かす
-    printf(" %d を押しました。角度： %d \n", chord, angle);
-
-    delay(1000);
-    return 0;
-}
-
-int Dminor(int chord) {
-    
-    printf("code is Dm\n");
-
-    for (int i = 0; i <= 9; i++){ // セレクトされてるコード以外を開放する
-        if (i != chord){ 
-            openPWM(i); 
-            return 0;
-        }
-    }
-    setPWM(chord, 0, map(angle, 0, 180, SERVO_MIN, SERVO_MAX)); // PWMで動かす
-    printf(" %d を押しました。角度： %d \n", chord, angle);
-
-    delay(1000);
-    return 0;
-}
-int Aminor(int chord) {
-    printf("code is Am\n");
-
-    for (int i = 0; i <= 9; i++){ // セレクトされてるコード以外を開放する
-        if (i != chord){ 
-            openPWM(i); 
-            return 0;
-        }
-    }
-    setPWM(chord, 0, map(angle, 0, 180, SERVO_MIN, SERVO_MAX)); // PWMで動かす
-    printf(" %d を押しました。角度： %d \n", chord, angle);
-
-    delay(1000);
-    return 0;
-}
-int Eminor(int chord) {
-    printf("code is Em\n");
-
-    for (int i = 0; i <= 9; i++){ // セレクトされてるコード以外を開放する
-        if (i != chord){ 
-            openPWM(i); 
-            return 0;
-        }
-    }
-    setPWM(chord, 0, map(angle, 0, 180, SERVO_MIN, SERVO_MAX)); // PWMで動かす
-    printf(" %d を押しました。角度： %d \n", chord, angle);
-
-    delay(1000);
-    return 0;
-}
-
-int Bminor(int chord) {
-    printf("code is Bm\n");
-
-    for (int i = 0; i <= 9; i++){ // セレクトされてるコード以外を開放する
-        if (i != chord){ 
-            openPWM(i); 
-            return 0;
-        }
-    }
-    setPWM(chord, 0, map(angle, 0, 180, SERVO_MIN, SERVO_MAX)); // PWMで動かす
-    printf(" %d を押しました。角度： %d \n", chord, angle);
-
-    delay(1000);
-    return 0;
-}
 int allopen(void) {
     for (int i =0; i<9; i++){
         
@@ -274,16 +137,16 @@ int main(void) {
 
     // Control servo motor
     while (1) {
-        Cmajor(C);
-        Amajor(A);
-        Emajor(E);
-        Gmajor(G);
-        Fmajor(F);
-        Dmajor(D);
-        Dminor(Dm);
-        Aminor(Am);
-        Eminor(Em);
-        Bminor(Bm);
+        presschord(C);
+        presschord(D);
+        presschord(E);
+        presschord(F);
+        presschord(G);
+        presschord(A);
+        presschord(Em);
+        presschord(Am);
+        presschord(Dm);
+        presschord(Bm);
         allopen();
     }
 

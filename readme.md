@@ -8,3 +8,5 @@ sudo apt install git-core
 git clone https://github.com/WiringPi/WiringPi.git
 cd WiringPi
 ./build
+
+https://akizukidenshi.com/catalog/g/g110350/
