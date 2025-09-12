@@ -19,28 +19,29 @@ def get_c(lib_path):
     # プログラムをさがす
     lib_C = ctypes.CDLL(lib_path)
     # 関数presschord
-    lib_C.presschord.argtypes = [ctypes.c_int,ctypes.c_int] # presschord 引数を指定
+    lib_C.presschord.argtypes = [ctypes.c_int,ctypes.c_int,ctypes.c_int] # presschord 引数を指定
     lib_C.presschord.restype = None # 戻り値を設定
 
     # 関数allopen
     lib_C.allopen.argtypes = []
     lib_C.allopen.restype = None
-
+    lib_C.closei2c.argtypes = []
+    lib_C.closei2c.restype = None
     # 関数setup
     lib_C.setup.argtypes = []
     lib_C.setup.restype = None
     
     return lib_C
     
-def move_motion(msg,Cprograms):
+def move_motion(msg,Cprograms, lastest_chord):
     # print("-------------------------コード--------------------")
     for i in range(len(chords)):
         if msg == chords[i]: # mqttから送られてきたメッセージに合うコードを探す。
             for j in range(len(right)):
                 if chords[i] == right[j]: # 右か左か
-                    Cprograms.presschord(i,0) # 0 = 左
+                    Cprograms.presschord(i,0,lastest_chord) # 0 = 左
                 elif chords[i] == left[j]:
-                    Cprograms.presschord(i,1) # 1 = 右
+                    Cprograms.presschord(i,1,lastest_chord) # 1 = 右
         elif msg == "open":
             Cprograms.allopen() # 開放弦の場合
             break
@@ -50,8 +51,8 @@ def move_motion(msg,Cprograms):
 def run():
     try:
         # 初期化
-        lastest_stroke = None
-        current_stroke = None
+        lastest_chord = None
+        current_chord = None
         
         lib_path =  os.path.join(os.path.dirname(__file__), "libchordcrl_PCA9685.so") # 共有ライブラリのパス
         Cprograms=get_c(lib_path) # Cの関数を取得
@@ -59,12 +60,12 @@ def run():
 
         while True:
             msg = msg_queue.get() # キューからメッセージを取得（ブロッキング）
-            current_stroke = msg # 現在のコードに登録 
-            if current_stroke != lastest_stroke: # 同じコードは無視する A != A ture 
-                lastest_stroke = current_stroke # 別のコードだったらそのコードを代入する A != C => 代入
+            current_chord = msg # 現在のコードに登録 
+            if current_chord != lastest_chord: # 同じコードは無視する A != A ture 
                 # print(lastest_stroke)
                 if msg:  # メッセージがある場合
-                    move_motion(msg,Cprograms)
+                    move_motion(msg,Cprograms, lastest_chord)
+                lastest_chord = current_chord # 別のコードだったらそのコードを代入する A != C => 代入
     except Exception as e:
         print(e)
     # finally:
