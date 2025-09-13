@@ -29,8 +29,12 @@ gcc -shared -o libchordcrl_PCA9685.so chordcrl_PCA9685.c -l wiringPi -fPIC
 
 // I2Cファイルディスクリプタ
 int i2c_fd;
+
+// 前回のコードの記憶をさせるための変数
 int last_chord = -1;
-// コードの数と配置（ほとんど使ってない）
+int spetial_chord = -1;
+
+// コードの一覧これは、printfでどのコードを押してるのかフィードバックが欲しいから 
 char *chordlist[] = {"C", "D", "E", "F", "G", "A", "Em", "Am", "Dm", "Bm"};
 
 // サーボの角度設定
@@ -88,7 +92,7 @@ void openPWM(int channel) {
 void allopen() {
     printf("all open\n");
     // 全てのチャンネルを開放状態にする
-    for (int i = 0; i < 10; i++) { // ループ回数を10に修正
+    for (int i = 0; i < 16; i++) { // ループ回数を10に修正
         openPWM(i);
     }
     // delay(1000);
@@ -97,17 +101,42 @@ void allopen() {
 // コードを押す
 void presschord(int chord_channel , int howangle) {
     printf("----------%s------------\n",chordlist[chord_channel]);
-    if (last_chord != -1 && last_chord != chord_channel) {
+
+    if (last_chord != -1 && last_chord != chord_channel) { // 前回のサーボをオフにする
         openPWM(last_chord); // PWMでサーボを動かす
+    }
+    if (spetial_chord != -1 && spetial_chord != chord_channel) { // Ｃなどの特殊なコードの時に使う
+        openPWM(spetial_chord);
+    }
+    
+    switch(chord_channel){
+        case 0:
+        case 3:
+        case 5:
+            setPWM(9,SERVO_MAX);
+            printf("cannnel %d on\n",9);
+            spetial_chord = 9;
+            break;
+        case 1:
+            setPWM(10,SERVO_MAX);
+            printf("cannnel %d on\n",2);
+            spetial_chord = 10;
+            break;
+        case 8:
+            setPWM(1,SERVO_MAX);
+            printf("cannnel %d on\n",8);
+            spetial_chord = 1;
+            break;
+        
     }
     // 指定されたチャンネルを押弦状態にする
     if (0 == howangle){ // 左
+
         
         // int pulse_width = map(LEFT_ANGLE, 0, 180, SERVO_MIN, SERVO_MAX); // サーボの角度を計算してもらう
         setPWM(chord_channel, SERVO_MIN); // PWMでサーボを動かす
         // setPWM(chord_channel, pulse_width);
         printf("Pressed chord: %s (Channel %d) at angle %d\n", chordlist[chord_channel], chord_channel, LEFT_ANGLE);
-        
         
     }else { // 右
     
@@ -117,7 +146,8 @@ void presschord(int chord_channel , int howangle) {
         printf("Pressed chord: %s (Channel %d) at angle %d\n", chordlist[chord_channel], chord_channel, RIGHT_ANGLE);
     }
 
-    last_chord = chord_channel;
+
+    last_chord = chord_channel; // 使ったサーボのチャンネルを記憶させる 
     // delay(1000);
 }
 

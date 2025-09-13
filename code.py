@@ -7,11 +7,12 @@ from share_queue import msg_queue # キューをインポート
 
 topic = 'guitar/code' # トピック登録
 # 左側（ここは順序気にしなくていいです）
+
 left = ["c","d","f","dm","bm"] # 5
 
 # 右側（ここは順序気にしなくていいです）
 right = ["g","a","em","am","e"] # 5
-
+dual_chord = ["c","f","am"]
 # 注意ですが、配列なので、コードとサーボのチャンネルと比例できるものではない
 chords = ["c","d","e","f","g","a","em","am","dm","bm"] # 10 # 追加削除
 
@@ -19,7 +20,7 @@ def get_c(lib_path):
     # プログラムをさがす
     lib_C = ctypes.CDLL(lib_path)
     # 関数presschord
-    lib_C.presschord.argtypes = [ctypes.c_int,ctypes.c_int,ctypes.c_int] # presschord 引数を指定
+    lib_C.presschord.argtypes = [ctypes.c_int,ctypes.c_int] # presschord 引数を指定
     lib_C.presschord.restype = None # 戻り値を設定
 
     # 関数allopen
@@ -33,20 +34,36 @@ def get_c(lib_path):
     
     return lib_C
     
-def move_motion(msg,Cprograms, lastest_chord):
+def move_motion(msg,Cprograms):
     # print("-------------------------コード--------------------")
     for i in range(len(chords)):
-        if msg == chords[i]: # mqttから送られてきたメッセージに合うコードを探す。
-            for j in range(len(right)):
-                if chords[i] == right[j]: # 右か左か
-                    Cprograms.presschord(i,0,lastest_chord) # 0 = 左
-                elif chords[i] == left[j]:
-                    Cprograms.presschord(i,1,lastest_chord) # 1 = 右
+        if msg == chords[i]: # mqttから送られてきたメッセージに合うコードを探す。 
+            Cprograms.presschord(i,0)
+            # for j in range(len(dual_chord)):
+            #     if chords[i] == dual_chord[j]:
+            #         # Cprograms.presschord(i,0)
+            #         Cprograms.presschord(8,0)
+            #         break
+            #     elif  chords[i] == chords[1]:
+            #         # Cprograms.presschord(1,0)
+            #         Cprograms.presschord(9,0)
+            #         break
+            #     elif chords[i] == chords[8]:
+            #         Cprograms.presschord(10,0)
+            #         break
+                # break
+            print("changed chord!!")
+            # for j in range(len(right)):
+            #     if chords[i] == right[j]: # 右か左か
+            #         Cprograms.presschord(i,0) # 0 = 左
+            #     elif chords[i] == left[j]:
+            #         Cprograms.presschord(i,1) # 1 = 右
+            break
         elif msg == "open":
             Cprograms.allopen() # 開放弦の場合
             break
 
-    print("-------------------------コード--------------------")
+    # print("-------------------------コード--------------------")
     
 def run():
     try:
@@ -64,7 +81,7 @@ def run():
             if current_chord != lastest_chord: # 同じコードは無視する A != A ture 
                 # print(lastest_stroke)
                 if msg:  # メッセージがある場合
-                    move_motion(msg,Cprograms, lastest_chord)
+                    move_motion(msg,Cprograms)
                 lastest_chord = current_chord # 別のコードだったらそのコードを代入する A != C => 代入
     except Exception as e:
         print(e)

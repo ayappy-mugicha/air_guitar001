@@ -26,8 +26,8 @@
 #define SERVO_MAX_PULSE 5000 // 約180度
 
 /*
-gcc -o servo_PCA servo_PCA.c -l wiringPi -FPIC
-gcc -shared -o libservoPCA.so servo_PCA.c -l wiringPi -fPIC
+gcc -o servo_PCA servo_PCA.c 
+gcc -shared -o libservo_PCA.so servo_PCA.c -l wiringPi -fPIC
 */
 // I2Cファイルディスクリプタ
 int i2c_fd;
@@ -85,11 +85,12 @@ void pca9685_init() {
 }
 
 void up() {
+    printf("up");
     set_servo_pulse(SERVO, SERVO_MIN_PULSE);
 }
 
 void down() {
-    
+    printf("down");
     set_servo_pulse(SERVO, SERVO_MAX_PULSE);
 }
 int main() {
