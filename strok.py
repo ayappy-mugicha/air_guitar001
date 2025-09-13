@@ -27,7 +27,7 @@ def run():
     try:
         lastest_stroke = None
         current_stroke = None
-        lib_path =  os.path.join(os.path.dirname(__file__), "libservo.so") # 共有ライブラリのパス
+        lib_path =  os.path.join(os.path.dirname(__file__), "libservoPCA.so") # 共有ライブラリのパス
         servo=get_c(lib_path) # Cの関数を取得
         servo.setup() # サーボのセットアップ
         

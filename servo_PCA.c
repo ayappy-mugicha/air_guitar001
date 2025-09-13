@@ -4,10 +4,6 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <linux/i2c-dev.h>
-/*
-gcc -o servo_PCA servo_PCA.c -l wiringPi -FPIC
-gcc -shared -o libsevo_PCA.so servo_PCA.c -l wiringPi -fPIC
-*/
 
 // PCA9685のI2Cアドレス
 #define PCA9685_I2C_ADDR 0x40
@@ -23,10 +19,16 @@ gcc -shared -o libsevo_PCA.so servo_PCA.c -l wiringPi -fPIC
 // PWM周波数（50Hz）
 #define PWM_FREQ 50
 
-// 50Hz時のサーボモーターのパルス幅（マイクロ秒）
-#define SERVO_MIN_PULSE 500  // 約0度
-#define SERVO_MAX_PULSE 2500 // 約180度
+#define SERVO 15
 
+// 50Hz時のサーボモーターのパルス幅（マイクロ秒）
+#define SERVO_MIN_PULSE 1500  // 約0度
+#define SERVO_MAX_PULSE 5000 // 約180度
+
+/*
+gcc -o servo_PCA servo_PCA.c -l wiringPi -FPIC
+gcc -shared -o libservoPCA.so servo_PCA.c -l wiringPi -fPIC
+*/
 // I2Cファイルディスクリプタ
 int i2c_fd;
 
@@ -40,9 +42,22 @@ void i2c_write_byte(int reg, int value) {
     }
 }
 
+// サーボモーターのパルス幅を設定する関数
+void set_servo_pulse(int channel, int pulse_width) {
+    // 4096ステップに変換
+    int on_time = 0; // ON時間は0固定
+    int off_time = (int)((double)pulse_width * (4096.0 / (1000000.0 / PWM_FREQ)));
+
+    // PWMデューティサイクルを設定
+    i2c_write_byte(LED0_ON_L + 4 * channel, on_time & 0xFF);
+    i2c_write_byte(LED0_ON_H + 4 * channel, on_time >> 8);
+    i2c_write_byte(LED0_OFF_L + 4 * channel, off_time & 0xFF);
+    i2c_write_byte(LED0_OFF_H + 4 * channel, off_time >> 8);
+}
+
 // PCA9685の初期化
 void pca9685_init() {
-        char *filename = "/dev/i2c-1";
+    char *filename = "/dev/i2c-1";
 
     // I2Cデバイスをオープン
     i2c_fd = open(filename, O_RDWR);
@@ -64,48 +79,36 @@ void pca9685_init() {
     // PWM周波数の設定（50Hz）
     int prescale_val = (int)(((25000000 / (4096.0 * PWM_FREQ)) + 0.5) - 1.0);
     i2c_write_byte(PRE_SCALE, prescale_val);
-}
-
-// サーボモーターのパルス幅を設定する関数
-void set_servo_pulse(int channel, int pulse_width) {
-    // 4096ステップに変換
-    int on_time = 0; // ON時間は0固定
-    int off_time = (int)((double)pulse_width * (4096.0 / (1000000.0 / PWM_FREQ)));
-
-    // PWMデューティサイクルを設定
-    i2c_write_byte(LED0_ON_L + 4 * channel, on_time & 0xFF);
-    i2c_write_byte(LED0_ON_H + 4 * channel, on_time >> 8);
-    i2c_write_byte(LED0_OFF_L + 4 * channel, off_time & 0xFF);
-    i2c_write_byte(LED0_OFF_H + 4 * channel, off_time >> 8);
-}
-
-int closei2c() {
     
-    // I2Cデバイスをクローズ
-    close(i2c_fd);
-    return 0;
+    set_servo_pulse(SERVO, (SERVO_MIN_PULSE + SERVO_MAX_PULSE) / 2);
+    printf("180度");
 }
 
-int down(void) {
-    printf("down");
-    set_servo_pulse(14, SERVO_MIN_PULSE);
+void up() {
+    set_servo_pulse(SERVO, SERVO_MIN_PULSE);
 }
-int up(void) {
-    printf("up");
-    set_servo_pulse(14, SERVO_MIN_PULSE);
+
+void down() {
+    
+    set_servo_pulse(SERVO, SERVO_MAX_PULSE);
 }
 int main() {
+
+    // PCA9685の初期設定
     pca9685_init();
+
     // サーボモーターを動かすループ
     while (1) {
-        down();
-        sleep(1);
+        // printf("0度へ移動\n");
         up();
-        sleep(1);
+        sleep(2);
+        // printf("90度へ移動\n");
+        down();
+        sleep(2);
     }
 
     // I2Cデバイスをクローズ
-    closei2c();
+    close(i2c_fd);
 
     return 0;
 }

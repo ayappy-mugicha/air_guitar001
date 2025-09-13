@@ -23,15 +23,13 @@ gcc -shared -o libchordcrl_PCA9685.so chordcrl_PCA9685.c -l wiringPi -fPIC
 #define PWM_FREQ 50
 
 // 50Hz時のサーボモーターのパルス幅（マイクロ秒）
-#define SERVO_MIN 500  // 約0度
-#define SERVO_MAX 2500 // 約180度
+#define SERVO_MIN 1500  // 約0度
+#define SERVO_MAX 10000 // 約180度
+// #define SERVO_N 1500
 
 // I2Cファイルディスクリプタ
 int i2c_fd;
-
-// PWM周波数（50Hz）
-#define PWM_FREQ 50
-
+int last_chord = -1;
 // コードの数と配置（ほとんど使ってない）
 char *chordlist[] = {"C", "D", "E", "F", "G", "A", "Em", "Am", "Dm", "Bm"};
 
@@ -59,6 +57,7 @@ void i2c_write_byte(int reg, int value) {
 
 // サーボを動かす
 void setPWM(int channel, int pulse_width ) {    // 4096ステップに変換
+    // 4096ステップに変換
     int on_time = 0; // ON時間は0固定
     int off_time = (int)((double)pulse_width * (4096.0 / (1000000.0 / PWM_FREQ)));
 
@@ -67,6 +66,7 @@ void setPWM(int channel, int pulse_width ) {    // 4096ステップに変換
     i2c_write_byte(LED0_ON_H + 4 * channel, on_time >> 8);
     i2c_write_byte(LED0_OFF_L + 4 * channel, off_time & 0xFF);
     i2c_write_byte(LED0_OFF_H + 4 * channel, off_time >> 8);
+    // sleep(1);
 }
 
 // サーボの角度をPWMに変換
@@ -77,9 +77,11 @@ long map(long x, long in_min, long in_max, long out_min, long out_max) {
 // サーボをすべてオフにする（開放弦）
 void openPWM(int channel) {
     
-    int pulse_width = map(OPEN_ANGLE, 0, 180, SERVO_MIN, SERVO_MAX);
-    setPWM(channel, pulse_width);
-    printf("Channel %d: Open\n", channel);
+    // int pulse_width = map(OPEN_ANGLE, 0, 180, SERVO_MIN, SERVO_MAX);
+    setPWM(channel, (SERVO_MIN + SERVO_MAX) / 2);
+    // setPWM(channel, pulse_width);
+    printf("Channel %d: Open at angle %d\n", channel , OPEN_ANGLE);
+    // sleep(1);
 }
 
 // 開放弦にする
@@ -93,27 +95,29 @@ void allopen() {
 }
 
 // コードを押す
-void presschord(int chord_channel , int howangle, int last_chord) {
+void presschord(int chord_channel , int howangle) {
     printf("----------%s------------\n",chordlist[chord_channel]);
-    if (last_chord != -1) {
+    if (last_chord != -1 && last_chord != chord_channel) {
         openPWM(last_chord); // PWMでサーボを動かす
     }
     // 指定されたチャンネルを押弦状態にする
     if (0 == howangle){ // 左
         
-        int pulse_width = map(LEFT_ANGLE, 0, 180, SERVO_MIN, SERVO_MAX); // サーボの角度を計算してもらう
-        setPWM(chord_channel, pulse_width); // PWMでサーボを動かす
+        // int pulse_width = map(LEFT_ANGLE, 0, 180, SERVO_MIN, SERVO_MAX); // サーボの角度を計算してもらう
+        setPWM(chord_channel, SERVO_MIN); // PWMでサーボを動かす
+        // setPWM(chord_channel, pulse_width);
         printf("Pressed chord: %s (Channel %d) at angle %d\n", chordlist[chord_channel], chord_channel, LEFT_ANGLE);
         
         
     }else { // 右
     
-        int pulse_width = map(RIGHT_ANGLE, 0, 180, SERVO_MIN, SERVO_MAX); // サーボの角度を計算してもらう
-        setPWM(chord_channel, pulse_width); // PWMでサーボを動かす
+        // int pulse_width = map(RIGHT_ANGLE, 0, 180, SERVO_MIN, SERVO_MAX); // サーボの角度を計算してもらう
+        setPWM(chord_channel, SERVO_MAX); // PWMでサーボを動かす
+        // setPWM(chord_channel, pulse_width);
         printf("Pressed chord: %s (Channel %d) at angle %d\n", chordlist[chord_channel], chord_channel, RIGHT_ANGLE);
     }
 
-    // int last_chord = chord_channel;
+    last_chord = chord_channel;
     // delay(1000);
 }
 
@@ -151,13 +155,15 @@ int closei2c() {
     close(i2c_fd);
     return 0;
 }
+
 int main(void) { // テスト環境（モジュールで使うので、この関数は使わない）
     int last_chord = -1;
     setup();
     // 全てのコードを順番に試す
     for (int i = 0; i < 10; i++) {
-        presschord(i,0,last_chord);
-        last_chord = i;
+        presschord(i,0);
+        // presschord(i,1);
+        // last_chord = i;
         sleep(1);
         // presschord(i,1);
         // sleep(1);
