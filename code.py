@@ -8,13 +8,15 @@ from share_queue import msg_queue # キューをインポート
 topic = 'guitar/code' # トピック登録
 # 左側（ここは順序気にしなくていいです）
 
-left = ["c","d","f","dm","bm"] # 5
-
+# servo01 = {"c":{"main":20,"sub":3},"d"{"main":45},"f"} # 5
+# servo02 = ["e","a"]
+# servo03 = ["c5","f5"]
 # 右側（ここは順序気にしなくていいです）
 right = ["g","a","em","am","e"] # 5
 dual_chord = ["c","f","am"]
 # 注意ですが、配列なので、コードとサーボのチャンネルと比例できるものではない
-chords = ["c","d","e","f","g","a","em","am","dm","bm"] # 10 # 追加削除
+# chords = {"c":25,"f":45,"d":15,"dm":15,"e":25,"a":15,"em":45,"am":25,"g":0}
+chords = ["c","f","d","dm","e","a","em","am","g"] # 9 追加削除
 
 def get_c(lib_path):
     # プログラムをさがす
@@ -38,26 +40,9 @@ def move_motion(msg,Cprograms):
     # print("-------------------------コード--------------------")
     for i in range(len(chords)):
         if msg == chords[i]: # mqttから送られてきたメッセージに合うコードを探す。 
+            # Cprograms.presschord(i,0)
             Cprograms.presschord(i,0)
-            # for j in range(len(dual_chord)):
-            #     if chords[i] == dual_chord[j]:
-            #         # Cprograms.presschord(i,0)
-            #         Cprograms.presschord(8,0)
-            #         break
-            #     elif  chords[i] == chords[1]:
-            #         # Cprograms.presschord(1,0)
-            #         Cprograms.presschord(9,0)
-            #         break
-            #     elif chords[i] == chords[8]:
-            #         Cprograms.presschord(10,0)
-            #         break
-                # break
             print("changed chord!!")
-            # for j in range(len(right)):
-            #     if chords[i] == right[j]: # 右か左か
-            #         Cprograms.presschord(i,0) # 0 = 左
-            #     elif chords[i] == left[j]:
-            #         Cprograms.presschord(i,1) # 1 = 右
             break
         elif msg == "open":
             Cprograms.allopen() # 開放弦の場合
