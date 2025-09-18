@@ -4,7 +4,7 @@ import random
 topic1 = "guitar/stroke"
 topic2 = "guitar/code"
 # codes = ["am","c","dm","d","f"]
-codes = ["c","d","e","f","g","a","em","am","dm","bm"]
+codes = ["c","f","d","dm","e","a","em","am","g"]
 client = mqttpub.publish_init()
 while 1:
     for i in range(len(codes)):

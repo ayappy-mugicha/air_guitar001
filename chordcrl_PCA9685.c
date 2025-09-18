@@ -70,23 +70,23 @@ typedef struct {
 
 ChordConfig chords_mapping[][4] = {
     // C Major
-    {{1, 24}, {3, 10}},
+    {{0, 24}, {3, 10}},
     // f Major 
-    {{1, 30}, {3, 15}},
+    {{0, 30}, {3, 15}},
     // d Major 
-    {{1, 55}, {2, 70}},
+    {{0, 55}, {2, 70}},
     // d minor
-    {{1, 55}, {3, 70}},
+    {{0, 55}, {3, 70}},
     // e major
-    {{2, 60}, {2, 60}},
+    {{1, 60}, {2, 60}},
     // a major
-    {{2, 40}, {2, 40}},
+    {{1, 40}, {2, 40}},
     // e minor
-    {{2, 60}, {2, 60}},
+    {{1, 60}, {2, 60}},
     // a minor
-    {{2, 40}, {3, 20}},
+    {{1, 40}, {1, 20}},
     // g major
-    {{4, 90}, {4,90}},
+    {{3, 90}, {3,90}},
 };
 int chord_channels_count[] = {2, 2, 2, 2, 2, 2, 2, 2, 2}; // Number of servos for each chord
 
@@ -114,7 +114,7 @@ long map(long x, long in_min, long in_max, long out_min, long out_max) {
 void openPWM(int channel) {
     
     // int pulse_width = map(OPEN_ANGLE, 0, 180, SERVO_MIN, SERVO_MAX);
-    setPWM(channel, (SERVO_MIN + SERVO_MAX) / 2);
+    setPWM(channel, (SERVO_MIN + SERVO_MAX)/2);
     // setPWM(channel, pulse_width);
     printf("Channel %d: Open at angle %d\n", channel , OPEN_ANGLE);
     // sleep(1);
@@ -131,7 +131,7 @@ void allopen() {
 }
 
 // コードを押す
-void presschord(int chord_channel , int howangle) {
+void presschord(int chord_channel) {
     // int pulse_width = map(howangle,0, 180, SERVO_MIN, SERVO_MAX); // サーボの角度を計算してもらう
     printf("----------%s------------\n",chordlist[chord_channel]);
 
@@ -200,8 +200,8 @@ int main(void) { // テスト環境（モジュールで使うので、この関
     srand(time(NULL));
     // 全てのコードを順番に試す
     for (int i = 0; i < 10; i++) {
-        int random_number = (rand() % 100) + 1;
-        presschord(i,random_number);
+        // int random_number = (rand() % 100) + 1;
+        presschord(i);
         // presschord(i,45);
         // last_chord = i;
         sleep(1);

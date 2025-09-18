@@ -23,6 +23,7 @@ def get_c(lib_path):
     lib_C = ctypes.CDLL(lib_path)
     # 関数presschord
     lib_C.presschord.argtypes = [ctypes.c_int,ctypes.c_int] # presschord 引数を指定
+    lib_C.presschord.argtypes = [ctypes.c_int]
     lib_C.presschord.restype = None # 戻り値を設定
 
     # 関数allopen
@@ -41,7 +42,7 @@ def move_motion(msg,Cprograms):
     for i in range(len(chords)):
         if msg == chords[i]: # mqttから送られてきたメッセージに合うコードを探す。 
             # Cprograms.presschord(i,0)
-            Cprograms.presschord(i,0)
+            Cprograms.presschord(i)
             print("changed chord!!")
             break
         elif msg == "open":
