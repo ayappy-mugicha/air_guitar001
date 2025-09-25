@@ -100,12 +100,12 @@ def process_frame(frame):
             # ダウンストローク
             if right_wrist[1] > right_elbow[1]:
                 down_raised = True
-                current_stroke_state = "down"
+                current_stroke_state = "up"
                 
             # アップストローク
             if right_wrist[1] < right_elbow[1] > right_shoulder[1]:
                 up_raised = True
-                current_stroke_state = "up" 
+                current_stroke_state = "down" 
                 
 
         if current_stroke_state != last_stroke_state:
