@@ -49,7 +49,7 @@ def main():
     
     # --- データ定義（コードを追加・変更する場合はここを編集） ---
     major_chords = ["C", "A", "E", "F", "G", "D"]
-    minor_chords = ["D", "A", "E", "B"]
+    minor_chords = ["D", "A", "E"]
 
     
     # ボタンのスタイル設定
