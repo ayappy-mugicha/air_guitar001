@@ -19,7 +19,7 @@
 // PWM周波数（50Hz）
 #define PWM_FREQ 50
 
-#define SERVO 15
+#define SERVO 8
 
 // 50Hz時のサーボモーターのパルス幅（マイクロ秒）
 #define SERVO_MIN_PULSE 1500  // 約0度
