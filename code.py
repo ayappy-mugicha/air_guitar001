@@ -38,7 +38,7 @@ def get_c(lib_path):
     return lib_C
     
 def move_motion(msg,Cprograms):
-    # print("-------------------------コード--------------------")
+    print(f"----------{msg}------------")
     for i in range(len(chords)):
         if msg == chords[i]: # mqttから送られてきたメッセージに合うコードを探す。 
             # Cprograms.presschord(i,0)
@@ -49,7 +49,7 @@ def move_motion(msg,Cprograms):
             Cprograms.allopen() # 開放弦の場合
             break
 
-    # print("-------------------------コード--------------------")
+    print(f"========={msg}=========")
     
 def run():
     try:

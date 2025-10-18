@@ -23,7 +23,7 @@
 
 // 50Hz時のサーボモーターのパルス幅（マイクロ秒）
 #define SERVO_MIN_PULSE 1500  // 約0度
-#define SERVO_MAX_PULSE 5000 // 約180度
+#define SERVO_MAX_PULSE 3800 // 約180度
 
 /*
 gcc -o servo_PCA servo_PCA.c 
@@ -85,12 +85,12 @@ void pca9685_init() {
 }
 
 void up() {
-    printf("up");
+    printf("up %d\n", SERVO_MIN_PULSE);
     set_servo_pulse(SERVO, SERVO_MIN_PULSE);
 }
 
 void down() {
-    printf("down");
+    printf("down %d\n", SERVO_MAX_PULSE);
     set_servo_pulse(SERVO, SERVO_MAX_PULSE);
 }
 int main() {
