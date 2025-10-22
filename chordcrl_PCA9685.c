@@ -27,7 +27,7 @@
 #define OPEN_ANGLE 0   // 開放弦の角度（仮）
 
 // channel6は、右か左しかないからね
-#define LEFT_ANGLE 20  
+#define LEFT_ANGLE 30
 #define RIGHT_ANGLE 170
 
 // これ何に使ってるかわかんねぇな
