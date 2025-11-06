@@ -5,6 +5,7 @@
 #include <sys/ioctl.h>
 #include <linux/i2c-dev.h>
 #include <time.h>
+#include <signal.h>
 
 // PCA9685のI2Cアドレス
 #define PCA9685_I2C_ADDR 0x40
@@ -64,7 +65,7 @@ typedef struct {
 // chordの配置を設定する
 ChordConfig chords_mapping[][4] = { 
     // C Major
-    {{4, 170}, {6, LEFT_ANGLE}},
+    {{4, 180}, {6, LEFT_ANGLE}},
     // f Major 
     {{4, 40}, {6, RIGHT_ANGLE}},
     // d Major 
@@ -228,25 +229,59 @@ int closei2c() { // I2Cデバイスをクローズする
     close(i2c_fd);
     return 0;
 }
-
+void sigint_handler(int sig) {
+    printf("\n[SIGINT 捕捉] Ctrl+C が押されました！\n");
+    printf("--- クリーンアップ処理を実行中 ---\n");
+    // ここでファイルクローズやリソース解放などのクリーンアップを行う
+    closei2c();
+    printf("--- 正常に終了します ---\n");
+    exit(0); // 処理後、プログラムを終了する
+}
+// char *chordlist[] = {"c","f","d","dm","e","a","em","am","g"};
 int main(void) { // テスト環境（モジュールで使うので、この関数は使わない）
     int last_chord = -1;
     setup();
     sleep(3);
     srand(time(NULL));
-    // 全てのコードを順番に試す
-    for (int i = 0; i < 10; i++) {
-        // int random_number = (rand() % 100) + 1;
-        // printf("chord %d\n",chordlist[i]);
-        presschord(i);
-        // presschord(i,45);
-        // last_chord = i;
-        sleep(2);
-        // presschord(i,1);
-        // sleep(1);
-
+    if (signal(SIGINT, sigint_handler) == SIG_ERR) {
+        perror("signal error");
+        return 1;
     }
-    allopen();
+    // 全てのコードを順番に試す
+    while(1){
+
+        presschord(0); // C
+        sleep(4);
+        allopen();
+        
+        presschord(8); // G
+        sleep(4);
+        allopen();
+        
+        presschord(7); // am
+        sleep(4);
+        allopen();
+        
+        presschord(6); // em
+        sleep(4);
+        allopen();
+        
+        presschord(1); // F
+        sleep(4);
+        allopen();
+        
+        presschord(0); // C
+        sleep(4);
+        allopen();
+
+        presschord(1); // F
+        sleep(4);
+        allopen();
+
+        presschord(8); // G
+        sleep(4);
+        allopen();
+    }
     closei2c();
 
     return 0;

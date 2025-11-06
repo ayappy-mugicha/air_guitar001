@@ -93,6 +93,7 @@ void down() {
     printf("down %d\n", SERVO_MAX_PULSE);
     set_servo_pulse(SERVO, SERVO_MAX_PULSE);
 }
+
 int main() {
 
     // PCA9685の初期設定
@@ -102,10 +103,10 @@ int main() {
     while (1) {
         // printf("0度へ移動\n");
         up();
-        sleep(2);
+        sleep(1);
         // printf("90度へ移動\n");
         down();
-        sleep(2);
+        sleep(1);
     }
 
     // I2Cデバイスをクローズ
