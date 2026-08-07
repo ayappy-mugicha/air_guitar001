@@ -277,7 +277,7 @@ def handle_button_click(chord_clicks, full_open_clicks, current_message):
 # --- アプリケーションの実行 ---
 if __name__ == '__main__':
     # run_server は非推奨となり app.run に置き換わった
-    app.run(debug=True, host='0.0.0.0', port=8050) # ローカルIPでアクセス可能に
+    app.run(debug=True, host='127.0.0.1', port=8050) # ローカルIPでアクセス可能に
     
     # アプリケーション終了時にMQTTクライアントをクリーンアップ
     # この部分はサーバーの終了方法に依存するため、確実ではない場合がある
