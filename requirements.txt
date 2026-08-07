@@ -1,0 +1,4 @@
+opencv-python
+ultralytics
+paho-mqtt
+dash

@@ -2,7 +2,7 @@ import cv2
 from ultralytics import YOLO
 import mqttpub
 
-video_path = 1
+video_path = 0
 capture = cv2.VideoCapture(video_path)
 
 KEYPOINTS_NAMES = [
