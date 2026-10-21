@@ -12,8 +12,13 @@
             window.dash_clientside &&
             typeof window.dash_clientside.set_props === "function"
         ) {
-            window.dash_clientside.set_props("hold-event", { data: payload });
-            return;
+            try {
+                window.dash_clientside.set_props("hold-event", { data: payload });
+                return;
+            } catch (err) {
+                queue.push(payload);
+                return;
+            }
         }
         queue.push(payload);
     }
