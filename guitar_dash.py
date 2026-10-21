@@ -5,8 +5,18 @@ import paho.mqtt.client as mqtt # mqtt.Client 型ヒントのためにインポ�
 import threading
 import time
 
+from demo_playback import (
+    DEMO_STROKE_INTERVAL_MS,
+    new_demo_state,
+    note_code_sent,
+    start_demo,
+    stop_demo,
+    tick_demo,
+)
+
 # --- グローバル定数定義 ---
 TOPIC_GUITAR_CODE = "guitar/code"
+TOPIC_GUITAR_STROKE = "guitar/stroke"
 TEXT_MAJOR = "メジャー"
 TEXT_MINOR = "マイナー"
 TEXT_FULL_OPEN = "フルオープン"
@@ -18,6 +28,8 @@ MINOR_CHORDS = ["D", "A", "E"]
 mqtt_client: mqtt.Client = None
 mqtt_connected = False
 mqtt_lock = threading.Lock() # MQTTクライアントへのアクセスを同期するためのロック
+demo_lock = threading.Lock()
+_demo_state = new_demo_state()
 
 # --- MQTTクライアントの初期化とループ開始 ---
 def initialize_mqtt_client():
@@ -54,9 +66,7 @@ print(f"初期化後のMQTT接続状態: {mqtt_connected}")
 # --- Dashアプリの初期化 ---
 app = dash.Dash(__name__, 
                 external_stylesheets=[
-                    'https://codepen.io/chriddyp/pen/bWLwgP.css', # Minimal CSS for basic styling
-                    # カスタムCSSをここにインラインで追加
-                    # または external_stylesheets=[..., '/assets/styles.css'] でファイル指定
+                    'https://codepen.io/chriddyp/pen/bWLwgP.css',
                 ],
                 meta_tags=[{'name': 'viewport', 'content': 'width=device-width, initial-scale=1.0'}])
 
@@ -159,74 +169,43 @@ app.layout = html.Div(style={
         ]),
     ]),
 
-    # フルオープンボタン
-    html.Div(style={'textAlign': 'center', 'marginTop': '30px', 'marginBottom': '20px'}, children=[
+    html.Div(className='transport-row', children=[
         html.Button(
             TEXT_FULL_OPEN,
             id='full-open-button',
             n_clicks=0,
-            style={
-                'fontSize': '28px', 'height': '70px', 'width': '80%', 'maxWidth': '280px', # フルオープンボタンの幅を調整
-                'borderRadius': '12px', 'border': 'none', 'backgroundColor': '#28a745', 'color': 'white',
-                'fontWeight': 'bold', 'boxShadow': '3px 3px 8px rgba(0,0,0,0.3)',
-                'transition': 'all 0.2s ease-in-out',
-                'cursor': 'pointer',
-            }
-        )
+            className='full-open-button',
+        ),
+        html.Button(
+            [
+                html.Span('demo', className='demo-label'),
+                html.Span(className='demo-led', **{'aria-hidden': 'true'}),
+                html.Span('停止中', id='demo-status-text', className='demo-status'),
+            ],
+            id='demo-button',
+            n_clicks=0,
+            className='demo-button',
+            **{
+                'aria-pressed': 'false',
+                'aria-label': 'カノン進行のデモを再生',
+                'type': 'button',
+            },
+        ),
     ]),
 
-    # ダミーのDiv (コールバックのトリガーとして使用)
     dcc.Interval(
         id='interval-component',
-        interval=1*1000, # 1秒ごとに更新 (MQTT接続ステータスチェック用など)
+        interval=1*1000,
         n_intervals=0,
         disabled=False
+    ),
+    dcc.Interval(
+        id='demo-interval',
+        interval=DEMO_STROKE_INTERVAL_MS,
+        n_intervals=0,
+        disabled=True
     )
 ])
-
-# --- 外部CSSファイルによるレイアウト調整 (Dashの推奨アプローチ) ---
-# Dashアプリケーションのルートディレクトリに 'assets' フォルダを作成し、
-# その中に 'styles.css' というファイルを作成し、以下の内容を記述します。
-# これにより、html.Divのstyleプロパティに直接書くよりも見やすく、メンテしやすいです。
-#
-# <プロジェクトルート>/
-# ├── dash_guitar_controller.py
-# ├── mqttpub.py
-# ├── mqttsys.py
-# └── assets/
-#     └── styles.css  <-- このファイル
-
-# assets/styles.css の内容:
-"""
-@media (min-width: 768px) { /* タブレット以上の画面幅で適用 */
-    .app-container {
-        flex-direction: row !important; /* 横並びにする */
-    }
-}
-
-.chord-section {
-    min-height: 300px; /* セクションの最小高さを設定して見た目を揃える */
-}
-
-/* ボタンのホバーエフェクト */
-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 4px 4px 10px rgba(0,0,0,0.35);
-}
-
-/* 個別のボタンの色調整 */
-#full-open-button:hover {
-    background-color: #218838 !important;
-}
-
-.major-section .button-grid button:hover {
-    background-color: #0056b3 !important;
-}
-
-.minor-section .button-grid button:hover {
-    background-color: #5a6268 !important;
-}
-"""
 
 # --- コールバック関数 ---
 
@@ -242,37 +221,121 @@ def update_mqtt_status(n):
     else:
         return html.Span("MQTT接続中...", style={'color': '#dc3545'})
 
+def _publish_code(message):
+    with mqtt_lock:
+        mqttpub.publish(mqtt_client, TOPIC_GUITAR_CODE, message)
+
+
+def _publish_stroke(value):
+    with mqtt_lock:
+        mqttpub.publish(mqtt_client, TOPIC_GUITAR_STROKE, value)
+
+
+def _status_text(chord=None, stroke=None):
+    parts = []
+    if chord is not None:
+        parts.append(f"[{chord}]を送信")
+    if stroke is not None:
+        parts.append(f"ストローク {stroke}")
+    if not parts:
+        return dash.no_update
+    return " / ".join(parts) + " ✅"
+
+
 # コードボタンクリック時の処理
 @app.callback(
     Output('last-sent-message', 'children'),
     Input({'type': 'chord-button', 'id': dash.ALL}, 'n_clicks'),
     Input('full-open-button', 'n_clicks'),
-    State('last-sent-message', 'children'), # 前回のメッセージを保持
-    prevent_initial_call=True # 最初のロード時にコールバックが発火するのを防ぐ
+    prevent_initial_call=True
 )
-def handle_button_click(chord_clicks, full_open_clicks, current_message):
-    ctx = dash.callback_context # どのコンポーネントがトリガーしたかを取得
+def handle_button_click(chord_clicks, full_open_clicks):
+    global _demo_state
+    ctx = dash.callback_context
 
     if not ctx.triggered:
-        raise dash.exceptions.PreventUpdate # トリガーがなければ更新しない
+        raise dash.exceptions.PreventUpdate
 
     button_id_raw = ctx.triggered[0]['prop_id']
     
     message_to_send = ""
-    # 動的IDか通常のIDかで処理を分岐
     if 'chord-button' in button_id_raw:
-        # 動的IDの文字列を辞書として評価し、id部分を取得
         button_id_dict = eval(button_id_raw.split('.')[0]) 
         message_to_send = button_id_dict['id']
     elif 'full-open-button' in button_id_raw:
         message_to_send = "open"
     
     if message_to_send:
-        with mqtt_lock: # MQTTクライアントへのアクセスを同期
-            mqttpub.publish(mqtt_client, TOPIC_GUITAR_CODE, message_to_send)
-        return f"[{message_to_send}]を送信 ✅"
+        with demo_lock:
+            _demo_state = note_code_sent(_demo_state, message_to_send)
+        _publish_code(message_to_send)
+        return _status_text(chord=message_to_send)
     
     raise dash.exceptions.PreventUpdate
+
+
+@app.callback(
+    Output('demo-interval', 'disabled'),
+    Output('demo-button', 'className'),
+    Output('demo-button', 'aria-pressed'),
+    Output('demo-button', 'aria-label'),
+    Output('demo-status-text', 'children'),
+    Output('last-sent-message', 'children', allow_duplicate=True),
+    Input('demo-button', 'n_clicks'),
+    prevent_initial_call=True
+)
+def toggle_demo(n_clicks):
+    global _demo_state
+    with demo_lock:
+        turning_on = not _demo_state.get("on")
+        if turning_on:
+            _demo_state, chord, stroke = start_demo(_demo_state)
+        else:
+            _demo_state, chord = stop_demo(_demo_state)
+            stroke = None
+
+    _publish_code(chord)
+    if stroke is not None:
+        _publish_stroke(stroke)
+
+    if turning_on:
+        return (
+            False,
+            'demo-button is-playing',
+            'true',
+            'カノン進行のデモを停止',
+            '再生中',
+            _status_text(chord=chord, stroke=stroke),
+        )
+    return (
+        True,
+        'demo-button',
+        'false',
+        'カノン進行のデモを再生',
+        '停止中',
+        _status_text(chord=chord),
+    )
+
+
+@app.callback(
+    Output('last-sent-message', 'children', allow_duplicate=True),
+    Input('demo-interval', 'n_intervals'),
+    prevent_initial_call=True
+)
+def on_demo_tick(n_intervals):
+    global _demo_state
+    with demo_lock:
+        if not _demo_state.get("on"):
+            raise dash.exceptions.PreventUpdate
+        _demo_state, chord, stroke = tick_demo(_demo_state)
+
+    if chord is not None:
+        _publish_code(chord)
+    if stroke is not None:
+        _publish_stroke(stroke)
+    if chord is None and stroke is None:
+        raise dash.exceptions.PreventUpdate
+    return _status_text(chord=chord, stroke=stroke)
 
 # --- アプリケーションの実行 ---
 if __name__ == '__main__':
