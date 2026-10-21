@@ -1,4 +1,4 @@
 opencv-python
-ultralytics
+ultralytics==8.4.115
 paho-mqtt
 dash
