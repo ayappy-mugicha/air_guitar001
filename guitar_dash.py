@@ -1,10 +1,11 @@
 import dash
-from dash import dcc, html, Input, Output, State
-import mqttpub # 修正したmqttpubモジュールをインポート
-import paho.mqtt.client as mqtt # mqtt.Client 型ヒントのためにインポート
+from dash import dcc, html, Input, Output
+import mqttpub  # 修正したmqttpubモジュールをインポート
+import paho.mqtt.client as mqtt  # mqtt.Client 型ヒントのためにインポート
 import threading
 import time
 
+from chord_hold import apply_hold_event, interrupt_demo_on_press
 from demo_playback import (
     DEMO_STROKE_INTERVAL_MS,
     new_demo_state,
@@ -19,31 +20,35 @@ TOPIC_GUITAR_CODE = "guitar/code"
 TOPIC_GUITAR_STROKE = "guitar/stroke"
 TEXT_MAJOR = "メジャー"
 TEXT_MINOR = "マイナー"
-TEXT_FULL_OPEN = "フルオープン"
+TEXT_FULL_OPEN = "開放弦"
 
 MAJOR_CHORDS = ["C", "A", "E", "F", "G", "D"]
 MINOR_CHORDS = ["D", "A", "E"]
 
+DEMO_STOPPED_CLASS = "demo-button"
+DEMO_PLAYING_CLASS = "demo-button is-playing"
+DEMO_START_LABEL = "カノン進行のデモを再生"
+DEMO_STOP_LABEL = "カノン進行のデモを停止"
+
 # MQTTクライアントをグローバルで管理
 mqtt_client: mqtt.Client = None
 mqtt_connected = False
-mqtt_lock = threading.Lock() # MQTTクライアントへのアクセスを同期するためのロック
+mqtt_lock = threading.Lock()  # MQTTクライアントへのアクセスを同期するためのロック
 demo_lock = threading.Lock()
 _demo_state = new_demo_state()
+_held_chords = []
+
 
 # --- MQTTクライアントの初期化とループ開始 ---
 def initialize_mqtt_client():
     global mqtt_client, mqtt_connected
     try:
-        # mqttpub.init_mqtt_client を呼び出す
-        mqtt_client = mqttpub.publish_init() 
-        # mqtt_client.loop_start() # バックグラウンドスレッドでループを開始
-        # 接続が確立するまで少し待つ
+        mqtt_client = mqttpub.publish_init()
         start_time = time.time()
-        while not mqtt_client.is_connected() and (time.time() - start_time < 10): # 待機時間を10秒に延長
+        while not mqtt_client.is_connected() and (time.time() - start_time < 10):
             print(f"MQTT接続待機中... ({time.time() - start_time:.1f}s)")
             time.sleep(0.5)
-        
+
         if mqtt_client.is_connected():
             mqtt_connected = True
             print("MQTTクライアントの初期化と接続が完了しました。")
@@ -55,171 +60,127 @@ def initialize_mqtt_client():
         print(f"MQTTクライアント初期化中にエラーが発生しました: {e}")
         mqtt_connected = False
 
-# アプリケーション起動時にMQTTクライアントを初期化
-# DashアプリケーションはWSGIサーバー上で動作するため、
-# この初期化は一度だけ、アプリケーションのメインプロセスで行われるべき
+
 print("MQTTクライアントを初期化中...")
 initialize_mqtt_client()
 print(f"初期化後のMQTT接続状態: {mqtt_connected}")
 
 
-# --- Dashアプリの初期化 ---
-app = dash.Dash(__name__, 
-                external_stylesheets=[
-                    'https://codepen.io/chriddyp/pen/bWLwgP.css',
-                ],
-                meta_tags=[{'name': 'viewport', 'content': 'width=device-width, initial-scale=1.0'}])
-
-app.title = "ギターコードコントローラー (Dash)"
-
-# カスタムCSSスタイルをインラインで追加 (または外部ファイルに記述)
-# メディアクエリはDashの`style`プロパティでは直接機能しないため、CSSファイルを使うのが理想的ですが、
-# ここでは`external_stylesheets`に直接CSS文字列を渡す形で記述します。
-# 実際には`/assets/styles.css`のような外部CSSファイルを使うことを強く推奨します。
-# 例: `app = dash.Dash(__name__, external_stylesheets=[... , '/assets/styles.css'])`
-# そして `assets/styles.css` ファイルに以下のCSSを書く
-app.layout = html.Div(style={
-    'fontFamily': 'Arial, sans-serif',
-    'maxWidth': '900px',
-    'margin': '0 auto',
-    'padding': '20px',
-    'backgroundColor': '#f0f2f5',
-    'minHeight': '100vh',
-    'boxSizing': 'border-box'
-}, children=[
-    html.H1("🎸 ギターコードコントローラー", style={'textAlign': 'center', 'color': '#333', 'marginBottom': '25px'}),
-
-    html.Div(id='mqtt-status', style={'textAlign': 'center', 'fontWeight': 'bold', 'marginBottom': '15px'}),
-    html.Div(id='last-sent-message', style={'textAlign': 'center', 'color': '#007bff', 'fontSize': '0.9em', 'marginBottom': '20px'}),
-
-    html.Div(className='app-container', style={
-        'display': 'flex',
-        'flexDirection': 'column', # デフォルトは縦積み (スマホ対応)
-        'gap': '20px',
-        'padding': '10px 0',
-    }, children=[
-        # メジャーコードセクション
-        html.Div(className='chord-section major-section', style={
-            'flex': '1', # 均等に幅を分割 (PCで)
-            'backgroundColor': '#fff',
-            'borderRadius': '10px', # 角を少し丸く
-            'boxShadow': '0 4px 8px rgba(0,0,0,0.15)', # 影を強調
-            'padding': '20px 15px', # パディングを調整
-            'textAlign': 'center',
-            'display': 'flex', # Flexboxを使って内部要素を中央寄せ
-            'flexDirection': 'column',
-        }, children=[
-            html.H2("メジャーコード", style={'color': '#555', 'marginBottom': '20px', 'borderBottom': '1px solid #eee', 'paddingBottom': '10px', 'fontSize': '1.8em'}),
-            html.Div(className='button-grid', style={
-                'display': 'grid',
-                'gridTemplateColumns': 'repeat(auto-fit, minmax(100px, 1fr))', # スマホでは2-3列、PCではもっと
-                'gap': '12px', # ボタン間の隙間
-                'justifyItems': 'center',
-                'flexGrow': '1', # 親の高さに合わせて伸びる
-                'alignContent': 'center', # グリッドを中央寄せ
-            }, children=[
-                html.Button(
-                    f"{chord}{TEXT_MAJOR}", 
-                    id={'type': 'chord-button', 'id': f"{chord.lower()}"}, 
-                    n_clicks=0,
-                    style={
-                        'fontSize': '20px', 'height': '80px', 'width': '100%', 'maxWidth': '120px',
-                        'borderRadius': '12px', 'border': 'none', 'backgroundColor': '#007bff', 'color': 'white',
-                        'fontWeight': 'bold', 'boxShadow': '2px 2px 5px rgba(0,0,0,0.2)',
-                        'transition': 'all 0.2s ease-in-out',
-                        'cursor': 'pointer',
-                    }
-                ) for chord in MAJOR_CHORDS
-            ]),
-        ]),
-
-        # マイナーコードセクション
-        html.Div(className='chord-section minor-section', style={
-            'flex': '1', # 均等に幅を分割 (PCで)
-            'backgroundColor': '#fff',
-            'borderRadius': '10px', # 角を少し丸く
-            'boxShadow': '0 4px 8px rgba(0,0,0,0.15)', # 影を強調
-            'padding': '20px 15px', # パディングを調整
-            'textAlign': 'center',
-            'display': 'flex', # Flexboxを使って内部要素を中央寄せ
-            'flexDirection': 'column',
-        }, children=[
-            html.H2("マイナーコード", style={'color': '#555', 'marginBottom': '20px', 'borderBottom': '1px solid #eee', 'paddingBottom': '10px', 'fontSize': '1.8em'}),
-            html.Div(className='button-grid', style={
-                'display': 'grid',
-                'gridTemplateColumns': 'repeat(auto-fit, minmax(100px, 1fr))',
-                'gap': '12px',
-                'justifyItems': 'center',
-                'flexGrow': '1',
-                'alignContent': 'center',
-            }, children=[
-                html.Button(
-                    f"{chord}{TEXT_MINOR}", 
-                    id={'type': 'chord-button', 'id': f"{chord.lower()}m"}, 
-                    n_clicks=0,
-                    style={
-                        'fontSize': '20px', 'height': '80px', 'width': '100%', 'maxWidth': '120px',
-                        'borderRadius': '12px', 'border': 'none', 'backgroundColor': '#6c757d', 'color': 'white',
-                        'fontWeight': 'bold', 'boxShadow': '2px 2px 5px rgba(0,0,0,0.2)',
-                        'transition': 'all 0.2s ease-in-out',
-                        'cursor': 'pointer',
-                    }
-                ) for chord in MINOR_CHORDS
-            ]),
-        ]),
-    ]),
-
-    html.Div(className='transport-row', children=[
-        html.Button(
-            TEXT_FULL_OPEN,
-            id='full-open-button',
-            n_clicks=0,
-            className='full-open-button',
-        ),
-        html.Button(
-            [
-                html.Span('demo', className='demo-label'),
-                html.Span(className='demo-led', **{'aria-hidden': 'true'}),
-                html.Span('停止中', id='demo-status-text', className='demo-status'),
-            ],
-            id='demo-button',
-            n_clicks=0,
-            className='demo-button',
-            **{
-                'aria-pressed': 'false',
-                'aria-label': 'カノン進行のデモを再生',
-                'type': 'button',
-            },
-        ),
-    ]),
-
-    dcc.Interval(
-        id='interval-component',
-        interval=1*1000,
-        n_intervals=0,
-        disabled=False
-    ),
-    dcc.Interval(
-        id='demo-interval',
-        interval=DEMO_STROKE_INTERVAL_MS,
-        n_intervals=0,
-        disabled=True
+def _chord_pad(letter, quality, chord_id, extra_class):
+    return html.Button(
+        [
+            html.Span(letter, className="pad-letter"),
+            html.Span(quality, className="pad-quality"),
+            html.Span("押さえ中", className="pad-held-label"),
+        ],
+        id={"type": "chord-pad", "id": chord_id},
+        n_clicks=0,
+        className=f"chord-pad {extra_class}",
+        **{
+            "data-chord": chord_id,
+            "aria-pressed": "false",
+            "aria-label": f"{letter} {quality} を押さえる",
+            "type": "button",
+        },
     )
-])
 
-# --- コールバック関数 ---
 
-# MQTT接続ステータスの更新
-@app.callback(
-    Output('mqtt-status', 'children'),
-    Input('interval-component', 'n_intervals')
+app = dash.Dash(
+    __name__,
+    meta_tags=[{"name": "viewport", "content": "width=device-width, initial-scale=1.0"}],
 )
-def update_mqtt_status(n):
-    global mqtt_connected # グローバル変数を参照
-    if mqtt_connected:
-        return html.Span("MQTT接続完了 ✅", style={'color': '#28a745'})
-    else:
-        return html.Span("MQTT接続中...", style={'color': '#dc3545'})
+app.title = "ギターコードコントローラー"
+
+app.layout = html.Div(
+    className="app-shell",
+    children=[
+        html.Header(
+            className="topbar",
+            children=[
+                html.H1("ギターコードコントローラー"),
+                html.Div(className="topbar-status", children=[
+                    html.Div(id="mqtt-status"),
+                    html.Div(id="last-sent-message", className="last-sent"),
+                ]),
+            ],
+        ),
+        html.Div(
+            className="app-container",
+            children=[
+                html.Section(
+                    className="chord-section major-section",
+                    children=[
+                        html.H2("メジャー"),
+                        html.Div(
+                            className="button-grid major-grid",
+                            children=[
+                                _chord_pad(chord, TEXT_MAJOR, chord.lower(), "is-major")
+                                for chord in MAJOR_CHORDS
+                            ],
+                        ),
+                    ],
+                ),
+                html.Section(
+                    className="chord-section minor-section",
+                    children=[
+                        html.H2("マイナー"),
+                        html.Div(
+                            className="button-grid minor-grid",
+                            children=[
+                                _chord_pad(chord, TEXT_MINOR, f"{chord.lower()}m", "is-minor")
+                                for chord in MINOR_CHORDS
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        ),
+        html.Div(
+            className="transport-row",
+            children=[
+                html.Button(
+                    [
+                        html.Span(TEXT_FULL_OPEN, className="open-label"),
+                        html.Span("コードを外す", className="open-hint"),
+                    ],
+                    id="full-open-button",
+                    n_clicks=0,
+                    className="full-open-button",
+                    **{"type": "button", "aria-label": "開放弦にする"},
+                ),
+                html.Button(
+                    [
+                        html.Span("demo", className="demo-label"),
+                        html.Span(className="demo-led", **{"aria-hidden": "true"}),
+                        html.Span("停止中", id="demo-status-text", className="demo-status"),
+                    ],
+                    id="demo-button",
+                    n_clicks=0,
+                    className=DEMO_STOPPED_CLASS,
+                    **{
+                        "aria-pressed": "false",
+                        "aria-label": DEMO_START_LABEL,
+                        "type": "button",
+                    },
+                ),
+            ],
+        ),
+        dcc.Store(id="hold-event"),
+        dcc.Interval(
+            id="interval-component",
+            interval=1 * 1000,
+            n_intervals=0,
+            disabled=False,
+        ),
+        dcc.Interval(
+            id="demo-interval",
+            interval=DEMO_STROKE_INTERVAL_MS,
+            n_intervals=0,
+            disabled=True,
+        ),
+    ],
+)
+
 
 def _publish_code(message):
     with mqtt_lock:
@@ -231,58 +192,128 @@ def _publish_stroke(value):
         mqttpub.publish(mqtt_client, TOPIC_GUITAR_STROKE, value)
 
 
-def _status_text(chord=None, stroke=None):
+def _display_chord(code):
+    if not code or code == "open":
+        return "開放"
+    if code.endswith("m"):
+        return f"{code[:-1].upper()}m"
+    return code.upper()
+
+
+def _status_text(chord=None, stroke=None, holding=False, demo_stopped=False):
     parts = []
+    if demo_stopped:
+        parts.append("demo を停止")
     if chord is not None:
-        parts.append(f"[{chord}]を送信")
+        if chord == "open":
+            parts.append("開放")
+        elif holding:
+            parts.append(f"{_display_chord(chord)} を押さえ中")
+        else:
+            parts.append(f"[{chord}]を送信")
     if stroke is not None:
         parts.append(f"ストローク {stroke}")
     if not parts:
         return dash.no_update
-    return " / ".join(parts) + " ✅"
+    return " / ".join(parts)
 
 
-# コードボタンクリック時の処理
+def _demo_stopped_outputs():
+    return (
+        True,
+        DEMO_STOPPED_CLASS,
+        "false",
+        DEMO_START_LABEL,
+        "停止中",
+    )
+
+
 @app.callback(
-    Output('last-sent-message', 'children'),
-    Input({'type': 'chord-button', 'id': dash.ALL}, 'n_clicks'),
-    Input('full-open-button', 'n_clicks'),
-    prevent_initial_call=True
+    Output("mqtt-status", "children"),
+    Input("interval-component", "n_intervals"),
 )
-def handle_button_click(chord_clicks, full_open_clicks):
-    global _demo_state
-    ctx = dash.callback_context
+def update_mqtt_status(n):
+    global mqtt_connected
+    if mqtt_connected:
+        return html.Span("MQTT 接続完了", className="mqtt-ok")
+    return html.Span("MQTT 接続中...", className="mqtt-wait")
 
-    if not ctx.triggered:
+
+@app.callback(
+    Output("last-sent-message", "children"),
+    Output("demo-interval", "disabled", allow_duplicate=True),
+    Output("demo-button", "className", allow_duplicate=True),
+    Output("demo-button", "aria-pressed", allow_duplicate=True),
+    Output("demo-button", "aria-label", allow_duplicate=True),
+    Output("demo-status-text", "children", allow_duplicate=True),
+    Input("hold-event", "data"),
+    prevent_initial_call=True,
+)
+def handle_chord_hold(event):
+    global _demo_state, _held_chords
+    if not event or not isinstance(event, dict):
         raise dash.exceptions.PreventUpdate
 
-    button_id_raw = ctx.triggered[0]['prop_id']
-    
-    message_to_send = ""
-    if 'chord-button' in button_id_raw:
-        button_id_dict = eval(button_id_raw.split('.')[0]) 
-        message_to_send = button_id_dict['id']
-    elif 'full-open-button' in button_id_raw:
-        message_to_send = "open"
-    
-    if message_to_send:
-        with demo_lock:
+    action = event.get("action")
+    chord_id = event.get("id")
+    with demo_lock:
+        demo_was_on = bool(_demo_state.get("on"))
+        _held_chords, message_to_send = apply_hold_event(_held_chords, action, chord_id)
+        should_stop = (
+            interrupt_demo_on_press(demo_was_on, action)
+            and message_to_send not in (None, "open")
+        )
+        if should_stop:
+            _demo_state = new_demo_state()
+        elif message_to_send:
             _demo_state = note_code_sent(_demo_state, message_to_send)
+
+    if not message_to_send and not should_stop:
+        raise dash.exceptions.PreventUpdate
+
+    if message_to_send:
         _publish_code(message_to_send)
-        return _status_text(chord=message_to_send)
-    
-    raise dash.exceptions.PreventUpdate
+
+    holding = bool(_held_chords) and message_to_send not in (None, "open")
+    status = _status_text(
+        chord=message_to_send,
+        holding=holding,
+        demo_stopped=should_stop,
+    )
+    if should_stop:
+        return (status, *_demo_stopped_outputs())
+    return (
+        status,
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+        dash.no_update,
+    )
 
 
 @app.callback(
-    Output('demo-interval', 'disabled'),
-    Output('demo-button', 'className'),
-    Output('demo-button', 'aria-pressed'),
-    Output('demo-button', 'aria-label'),
-    Output('demo-status-text', 'children'),
-    Output('last-sent-message', 'children', allow_duplicate=True),
-    Input('demo-button', 'n_clicks'),
-    prevent_initial_call=True
+    Output("last-sent-message", "children", allow_duplicate=True),
+    Input("full-open-button", "n_clicks"),
+    prevent_initial_call=True,
+)
+def handle_full_open(n_clicks):
+    global _demo_state
+    with demo_lock:
+        _demo_state = note_code_sent(_demo_state, "open")
+    _publish_code("open")
+    return _status_text(chord="open")
+
+
+@app.callback(
+    Output("demo-interval", "disabled"),
+    Output("demo-button", "className"),
+    Output("demo-button", "aria-pressed"),
+    Output("demo-button", "aria-label"),
+    Output("demo-status-text", "children"),
+    Output("last-sent-message", "children", allow_duplicate=True),
+    Input("demo-button", "n_clicks"),
+    prevent_initial_call=True,
 )
 def toggle_demo(n_clicks):
     global _demo_state
@@ -301,26 +332,22 @@ def toggle_demo(n_clicks):
     if turning_on:
         return (
             False,
-            'demo-button is-playing',
-            'true',
-            'カノン進行のデモを停止',
-            '再生中',
+            DEMO_PLAYING_CLASS,
+            "true",
+            DEMO_STOP_LABEL,
+            "再生中",
             _status_text(chord=chord, stroke=stroke),
         )
     return (
-        True,
-        'demo-button',
-        'false',
-        'カノン進行のデモを再生',
-        '停止中',
+        *_demo_stopped_outputs(),
         _status_text(chord=chord),
     )
 
 
 @app.callback(
-    Output('last-sent-message', 'children', allow_duplicate=True),
-    Input('demo-interval', 'n_intervals'),
-    prevent_initial_call=True
+    Output("last-sent-message", "children", allow_duplicate=True),
+    Input("demo-interval", "n_intervals"),
+    prevent_initial_call=True,
 )
 def on_demo_tick(n_intervals):
     global _demo_state
@@ -337,14 +364,10 @@ def on_demo_tick(n_intervals):
         raise dash.exceptions.PreventUpdate
     return _status_text(chord=chord, stroke=stroke)
 
-# --- アプリケーションの実行 ---
-if __name__ == '__main__':
-    # run_server は非推奨となり app.run に置き換わった
-    app.run(debug=True, host='127.0.0.1', port=8050) # ローカルIPでアクセス可能に
-    
-    # アプリケーション終了時にMQTTクライアントをクリーンアップ
-    # この部分はサーバーの終了方法に依存するため、確実ではない場合がある
-    # 例: Ctrl+Cで終了した場合、このコードは実行されないことが多い
+
+if __name__ == "__main__":
+    app.run(debug=True, host="127.0.0.1", port=8050)
+
     if mqtt_client:
         mqttpub.publish_stop(mqtt_client)
         print("MQTTクライアントをクリーンアップしました。")
