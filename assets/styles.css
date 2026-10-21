@@ -1,0 +1,202 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&display=swap");
+
+:root {
+    --stage-navy: #24324a;
+    --stage-navy-hover: #31415e;
+    --stage-navy-active: #1a2436;
+    --pick-amber: #d98a11;
+    --pick-amber-hover: #c47b0c;
+    --pick-amber-active: #a86709;
+    --led-on: #ffd36a;
+    --ink: #1a1f2b;
+    --open-green: #28a745;
+    --open-green-hover: #218838;
+    --open-green-active: #1c7430;
+    --focus-ring: #4d7cff;
+}
+
+@media (min-width: 768px) {
+    .app-container {
+        flex-direction: row !important;
+    }
+}
+
+.chord-section {
+    min-height: 300px;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.35);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+button:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 3px;
+}
+
+button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+#full-open-button:hover {
+    background-color: var(--open-green-hover) !important;
+}
+
+#full-open-button:active {
+    background-color: var(--open-green-active) !important;
+}
+
+.major-section .button-grid button:hover {
+    background-color: #0056b3 !important;
+}
+
+.minor-section .button-grid button:hover {
+    background-color: #5a6268 !important;
+}
+
+.transport-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 32px;
+    margin-top: 30px;
+    margin-bottom: 20px;
+}
+
+.full-open-button {
+    font-size: 28px;
+    height: 70px;
+    min-width: 200px;
+    max-width: 280px;
+    flex: 1 1 220px;
+    border-radius: 12px;
+    border: none;
+    background-color: var(--open-green);
+    color: white;
+    font-weight: bold;
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.3);
+    transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    cursor: pointer;
+}
+
+.demo-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 70px;
+    min-width: 160px;
+    padding: 12px 28px;
+    border-radius: 12px;
+    border: 2px solid transparent;
+    background-color: var(--stage-navy);
+    color: #f4f6fa;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.3);
+    transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+    cursor: pointer;
+}
+
+.demo-button:hover {
+    background-color: var(--stage-navy-hover);
+}
+
+.demo-button:active {
+    background-color: var(--stage-navy-active);
+}
+
+.demo-button:focus-visible {
+    outline: 3px solid var(--led-on);
+    outline-offset: 3px;
+}
+
+.demo-button:disabled {
+    background-color: #8a93a3;
+    color: #e8ebf0;
+}
+
+.demo-button.is-playing {
+    background-color: var(--pick-amber);
+    color: var(--ink);
+    border-color: #8a5608;
+    box-shadow: 0 0 0 1px rgba(217, 138, 17, 0.35), 3px 3px 8px rgba(0, 0, 0, 0.25);
+}
+
+.demo-button.is-playing:hover {
+    background-color: var(--pick-amber-hover);
+}
+
+.demo-button.is-playing:active {
+    background-color: var(--pick-amber-active);
+}
+
+.demo-button.is-playing:focus-visible {
+    outline: 3px solid var(--stage-navy);
+    outline-offset: 3px;
+}
+
+.demo-label {
+    text-transform: lowercase;
+}
+
+.demo-status {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    opacity: 0.85;
+}
+
+.demo-led {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #5c6578;
+    flex-shrink: 0;
+}
+
+.demo-button.is-playing .demo-led {
+    background: var(--led-on);
+    box-shadow: 0 0 8px var(--led-on);
+    animation: tempo-blink 0.5s step-end infinite;
+}
+
+@keyframes tempo-blink {
+    0%,
+    49% {
+        opacity: 1;
+    }
+    50%,
+    100% {
+        opacity: 0.22;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    button,
+    .demo-button,
+    .full-open-button {
+        transition: none;
+    }
+
+    button:hover,
+    .demo-button:hover {
+        transform: none;
+    }
+
+    .demo-button.is-playing .demo-led {
+        animation: none;
+        opacity: 1;
+    }
+}
