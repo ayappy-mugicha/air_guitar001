@@ -1,3 +1,6 @@
 __pycache__
 my-venv001
 WiringPi
+.pio
+.vscode
+*.so
