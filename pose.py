@@ -6,6 +6,17 @@ import cv2
 from ultralytics import YOLO
 import mqttpub
 
+MODEL_PATH = "yolo11n-pose.pt"
+IMG_SIZE = 416
+KEYPOINT_SCORE_MIN = 0.5
+WINDOW_NAME = "YOLO11 Pose"
+WINDOW_WIDTH = 1280
+WINDOW_HEIGHT = 720
+
+RIGHT_SHOULDER = 6
+RIGHT_ELBOW = 8
+RIGHT_WRIST = 10
+
 video_path = 0
 capture = cv2.VideoCapture(video_path)
 
@@ -30,7 +41,7 @@ KEYPOINTS_NAMES = [
 ]
 
 # モデルの読み込み
-model = YOLO("yolov8n-pose.pt")
+model = YOLO(MODEL_PATH)
 topic = "guitar/stroke"
 client = mqttpub.publish_init()
 last_stroke_state = None
@@ -62,7 +73,7 @@ atexit.register(_shutdown)
 
 def process_frame(frame):
     global last_stroke_state
-    results = model(frame)
+    results = model(frame, imgsz=IMG_SIZE, verbose=False)
 
     annotated_frame = results[0].plot()
 
@@ -75,7 +86,7 @@ def process_frame(frame):
 
     for idx, (point, score) in enumerate(zip(keypoints, confs)):
         x, y = int(point[0]), int(point[1])
-        if score < 0.5:
+        if score < KEYPOINT_SCORE_MIN:
             continue
 
         print(
@@ -103,12 +114,20 @@ def process_frame(frame):
 
     down_raised = False
     up_raised = False
-
-    right_elbow = keypoints[8]
-    right_wrist = keypoints[10]
-    right_shoulder = keypoints[6]
-
     current_stroke_state = None
+
+    arm_visible = (
+        confs[RIGHT_SHOULDER] >= KEYPOINT_SCORE_MIN
+        and confs[RIGHT_ELBOW] >= KEYPOINT_SCORE_MIN
+        and confs[RIGHT_WRIST] >= KEYPOINT_SCORE_MIN
+    )
+    if not arm_visible:
+        print("------------------------------------------------------")
+        return annotated_frame
+
+    right_elbow = keypoints[RIGHT_ELBOW]
+    right_wrist = keypoints[RIGHT_WRIST]
+    right_shoulder = keypoints[RIGHT_SHOULDER]
 
     if (right_wrist[1] > right_shoulder[1]) and right_shoulder[0] < right_wrist[0]:
         if right_wrist[1] > right_elbow[1]:
@@ -153,6 +172,10 @@ def process_frame(frame):
     print("------------------------------------------------------")
     return annotated_frame
 
+
+cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
+cv2.resizeWindow(WINDOW_NAME, WINDOW_WIDTH, WINDOW_HEIGHT)
+
 try:
     while capture.isOpened():
         success, frame = capture.read()
@@ -160,7 +183,7 @@ try:
             break
 
         annotated_frame = process_frame(frame)
-        cv2.imshow("YOLOv8 Human Pose Estimation", annotated_frame)
+        cv2.imshow(WINDOW_NAME, annotated_frame)
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
