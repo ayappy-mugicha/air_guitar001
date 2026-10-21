@@ -1,3 +1,8 @@
+import atexit
+import os
+import signal
+import sys
+
 import dash
 from dash import dcc, html, Input, Output
 import mqttpub  # 修正したmqttpubモジュールをインポート
@@ -64,6 +69,29 @@ def initialize_mqtt_client():
 print("MQTTクライアントを初期化中...")
 initialize_mqtt_client()
 print(f"初期化後のMQTT接続状態: {mqtt_connected}")
+
+_mqtt_cleanup_done = False
+
+
+def _cleanup_mqtt() -> None:
+    global _mqtt_cleanup_done
+    if _mqtt_cleanup_done or not mqtt_client:
+        return
+    _mqtt_cleanup_done = True
+    mqttpub.publish_stop(mqtt_client)
+    print("MQTTクライアントをクリーンアップしました。")
+
+
+def _handle_exit_signal(_signum: int, _frame: object) -> None:
+    _cleanup_mqtt()
+    sys.exit(0)
+
+
+for sig in (signal.SIGINT, signal.SIGTERM):
+    signal.signal(sig, _handle_exit_signal)
+if hasattr(signal, "SIGBREAK"):
+    signal.signal(signal.SIGBREAK, _handle_exit_signal)
+atexit.register(_cleanup_mqtt)
 
 
 def _chord_pad(letter, quality, chord_id, extra_class):
@@ -364,10 +392,12 @@ def on_demo_tick(n_intervals):
         raise dash.exceptions.PreventUpdate
     return _status_text(chord=chord, stroke=stroke)
 
-
 if __name__ == "__main__":
-    app.run(debug=True, host="127.0.0.1", port=8050)
-
-    if mqtt_client:
-        mqttpub.publish_stop(mqtt_client)
-        print("MQTTクライアントをクリーンアップしました。")
+    supervised = os.environ.get("AIR_GUITAR_SUPERVISED") == "1"
+    app.run(
+        debug=not supervised,
+        host="127.0.0.1",
+        port=8050,
+        use_reloader=not supervised,
+    )
+    _cleanup_mqtt()
