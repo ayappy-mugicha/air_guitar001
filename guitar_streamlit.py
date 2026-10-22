@@ -1,6 +1,9 @@
 import streamlit as st
+
 import mqttpub
-topic = "guitar/code"
+from mqttsys import MQTT_TOPIC_CODE
+
+topic = MQTT_TOPIC_CODE
 
 if "client" not in st.session_state: # 呼び出しは一回だけです
     st.session_state.client = mqttpub.publish_init()

@@ -2,3 +2,4 @@ opencv-python
 ultralytics==8.4.115
 paho-mqtt
 dash
+python-dotenv

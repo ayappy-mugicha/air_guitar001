@@ -1,6 +1,7 @@
 import mqttpub
+from mqttsys import MQTT_TOPIC_CODE
 
-topic = "guitar/code"
+topic = MQTT_TOPIC_CODE
 client = mqttpub.publish_init()
 def send(message):
     mqttpub.publish(client, topic, message) # mqttpubに送信

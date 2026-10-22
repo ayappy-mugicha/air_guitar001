@@ -1,6 +1,6 @@
-from mqttsys import host, port , connect_mqtt
+from mqttsys import MQTT_TOPIC_STROKE, connect_mqtt, host, port
 
-topic = 'guitar/stroke'
+topic = MQTT_TOPIC_STROKE
 
 def run(topic):
     client = connect_mqtt(host,port)

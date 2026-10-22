@@ -1,7 +1,8 @@
-from mqttsys import host, port, connect_mqtt
 from time import sleep
 
-topic = "guitar/stroke"
+from mqttsys import MQTT_TOPIC_STROKE, connect_mqtt, host, port
+
+topic = MQTT_TOPIC_STROKE
 
 def publish_init():
     client = connect_mqtt(host, port)

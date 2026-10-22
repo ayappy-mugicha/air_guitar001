@@ -1,23 +1,26 @@
 import atexit
+import os
 import signal
 import sys
 
 import cv2
 from ultralytics import YOLO
-import mqttpub
 
-MODEL_PATH = "yolo11n-pose.pt"
-IMG_SIZE = 416
+import mqttpub
+from mqttsys import MQTT_TOPIC_STROKE, env_int
+
+MODEL_PATH = os.environ.get("MODEL_PATH", "yolo11n-pose.pt")
+IMG_SIZE = env_int("IMG_SIZE", 416)
 KEYPOINT_SCORE_MIN = 0.5
-WINDOW_NAME = "YOLO11 Pose"
-WINDOW_WIDTH = 1030
-WINDOW_HEIGHT = 920
+WINDOW_NAME = os.environ.get("WINDOW_NAME") or "YOLO11 Pose"
+WINDOW_WIDTH = env_int("WINDOW_WIDTH", 1030)
+WINDOW_HEIGHT = env_int("WINDOW_HEIGHT", 920)
 
 RIGHT_SHOULDER = 6
 RIGHT_ELBOW = 8
 RIGHT_WRIST = 10
 
-video_path = 0
+video_path = env_int("CAMERA_INDEX", 0)
 capture = cv2.VideoCapture(video_path)
 
 KEYPOINTS_NAMES = [
@@ -42,7 +45,7 @@ KEYPOINTS_NAMES = [
 
 # モデルの読み込み
 model = YOLO(MODEL_PATH)
-topic = "guitar/stroke"
+topic = MQTT_TOPIC_STROKE
 client = mqttpub.publish_init()
 last_stroke_state = None
 _shutdown_done = False

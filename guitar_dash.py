@@ -5,7 +5,8 @@ import sys
 
 import dash
 from dash import dcc, html, Input, Output
-import mqttpub  # 修正したmqttpubモジュールをインポート
+import mqttpub
+from mqttsys import MQTT_TOPIC_CODE, MQTT_TOPIC_STROKE, env_int
 import paho.mqtt.client as mqtt  # mqtt.Client 型ヒントのためにインポート
 import threading
 import time
@@ -30,8 +31,10 @@ from guide_copy import (
 )
 
 # --- グローバル定数定義 ---
-TOPIC_GUITAR_CODE = "guitar/code"
-TOPIC_GUITAR_STROKE = "guitar/stroke"
+TOPIC_GUITAR_CODE = MQTT_TOPIC_CODE
+TOPIC_GUITAR_STROKE = MQTT_TOPIC_STROKE
+DASH_HOST = os.environ.get("DASH_HOST", "127.0.0.1")
+DASH_PORT = env_int("DASH_PORT", 8050)
 TEXT_MAJOR = "メジャー"
 TEXT_MINOR = "マイナー"
 TEXT_FULL_OPEN = "開放弦"
@@ -481,8 +484,8 @@ if __name__ == "__main__":
     supervised = os.environ.get("AIR_GUITAR_SUPERVISED") == "1"
     app.run(
         debug=not supervised,
-        host="127.0.0.1",
-        port=8050,
+        host=DASH_HOST,
+        port=DASH_PORT,
         use_reloader=not supervised,
     )
     _cleanup_mqtt()

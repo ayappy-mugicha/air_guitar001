@@ -1,8 +1,10 @@
 import streamlit as st
+
 import mqttpub
+from mqttsys import MQTT_TOPIC_CODE
 
 # --- 定数（変更の可能性が低い値をまとめておく） ---
-TOPIC = "guitar/code"
+TOPIC = MQTT_TOPIC_CODE
 TEXT_MAJOR = "メジャー"
 TEXT_MINOR = "マイナー"
 
