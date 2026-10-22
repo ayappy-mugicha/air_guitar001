@@ -19,6 +19,15 @@ from demo_playback import (
     stop_demo,
     tick_demo,
 )
+from guide_copy import (
+    GUIDE_CLOSE_LABEL,
+    GUIDE_DIALOG_TITLE,
+    GUIDE_OPEN_LABEL,
+    GUIDE_STEPS,
+    GUIDE_STROKE_ALT,
+    GUIDE_STROKE_SRC,
+    GUIDE_WARNING,
+)
 
 # --- グローバル定数定義 ---
 TOPIC_GUITAR_CODE = "guitar/code"
@@ -94,6 +103,66 @@ if hasattr(signal, "SIGBREAK"):
 atexit.register(_cleanup_mqtt)
 
 
+def _guide_step(index, step):
+    children = [
+        html.Span(str(index), className="guide-step-num"),
+        html.H3(step["title"], className="guide-step-title"),
+        html.P(step["body"], className="guide-step-body"),
+    ]
+    classes = "guide-step"
+    if step["media"]:
+        classes += " is-stroke"
+        children.append(
+            html.Img(
+                src=GUIDE_STROKE_SRC,
+                alt=GUIDE_STROKE_ALT,
+                className="guide-stroke",
+            )
+        )
+    return html.Li(children, className=classes)
+
+
+def _guide_dialog():
+    return html.Div(
+        id="guide-dialog",
+        className="guide-dialog",
+        hidden=True,
+        children=[
+            html.Div(className="guide-backdrop", **{"aria-hidden": "true"}),
+            html.Div(
+                className="guide-sheet",
+                role="dialog",
+                **{
+                    "aria-modal": "true",
+                    "aria-labelledby": "guide-heading",
+                },
+                children=[
+                    html.Div(
+                        className="guide-sheet-bar",
+                        children=[
+                            html.H2(GUIDE_DIALOG_TITLE, id="guide-heading"),
+                            html.Button(
+                                GUIDE_CLOSE_LABEL,
+                                id="guide-close",
+                                className="guide-close-button",
+                                type="button",
+                            ),
+                        ],
+                    ),
+                    html.P(GUIDE_WARNING, className="guide-warning"),
+                    html.Ol(
+                        className="guide-steps",
+                        children=[
+                            _guide_step(index, step)
+                            for index, step in enumerate(GUIDE_STEPS, start=1)
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
 def _chord_pad(letter, quality, chord_id, extra_class):
     return html.Button(
         [
@@ -125,7 +194,22 @@ app.layout = html.Div(
         html.Header(
             className="topbar",
             children=[
-                html.H1("ギターコードコントローラー"),
+                html.Div(
+                    className="topbar-heading",
+                    children=[
+                        html.H1("ギターコードコントローラー"),
+                        html.Button(
+                            GUIDE_OPEN_LABEL,
+                            id="guide-open",
+                            className="guide-open-button",
+                            type="button",
+                            **{
+                                "aria-expanded": "false",
+                                "aria-controls": "guide-dialog",
+                            },
+                        ),
+                    ],
+                ),
                 html.Div(className="topbar-status", children=[
                     html.Div(id="mqtt-status"),
                     html.Div(id="last-sent-message", className="last-sent"),
@@ -193,6 +277,7 @@ app.layout = html.Div(
                 ),
             ],
         ),
+        _guide_dialog(),
         dcc.Store(id="hold-event"),
         dcc.Interval(
             id="interval-component",

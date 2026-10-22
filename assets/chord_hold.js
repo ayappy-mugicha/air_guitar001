@@ -36,6 +36,14 @@
         }
     }
 
+    function guideIsOpen() {
+        if (typeof window.airGuitarGuideIsOpen === "function") {
+            return window.airGuitarGuideIsOpen();
+        }
+        var root = document.getElementById("guide-dialog");
+        return Boolean(root && !root.hasAttribute("hidden"));
+    }
+
     function padFromEvent(event) {
         var node = event.target;
         if (!node || !node.closest) {
@@ -53,6 +61,9 @@
     }
 
     function onPointerDown(event) {
+        if (guideIsOpen()) {
+            return;
+        }
         var pad = padFromEvent(event);
         if (!pad || pad.disabled) {
             return;
@@ -75,6 +86,9 @@
     }
 
     function onPointerEnd(event) {
+        if (guideIsOpen() && !pointersDown[event.pointerId]) {
+            return;
+        }
         var pad = pointersDown[event.pointerId] || padFromEvent(event);
         if (!pad || !pointersDown[event.pointerId]) {
             return;
@@ -100,6 +114,9 @@
     }
 
     function onKeyDown(event) {
+        if (guideIsOpen()) {
+            return;
+        }
         var pad = padFromEvent(event);
         if (!pad || pad.disabled || !isHoldKey(event) || event.repeat) {
             return;
@@ -115,6 +132,9 @@
     }
 
     function onKeyUp(event) {
+        if (guideIsOpen() && !Object.keys(keysDown).length) {
+            return;
+        }
         var pad = padFromEvent(event);
         if (!pad || !isHoldKey(event)) {
             return;

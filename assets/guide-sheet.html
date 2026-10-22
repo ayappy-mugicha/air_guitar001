@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>えあ・ぎたー 使い方</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=IBM+Plex+Mono:wght@600&family=Noto+Sans+JP:wght@500;700&display=swap");
+@page { size: A4 landscape; margin: 10mm; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #e6e2da;
+  color: #1a1f2b;
+  font-family: "Familjen Grotesk", "Noto Sans JP", "Hiragino Sans", sans-serif;
+}
+body {
+  min-height: 190mm;
+}
+.sheet {
+  box-sizing: border-box;
+  min-height: 190mm;
+  padding: 8mm 8mm 7mm;
+  display: flex;
+  flex-direction: column;
+  gap: 6mm;
+}
+.sheet-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8mm;
+}
+h1 {
+  margin: 0;
+  font-size: 22pt;
+  font-weight: 700;
+}
+.warning {
+  margin: 0;
+  padding: 3mm 4mm;
+  background: #24324a;
+  color: #f4f6fa;
+  border-radius: 8px;
+  font-size: 12pt;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.7fr 1fr 1fr;
+  gap: 4mm;
+  flex: 1;
+}
+.step {
+  background: #f4f1ea;
+  border-radius: 10px;
+  padding: 4mm;
+  display: flex;
+  flex-direction: column;
+  gap: 3mm;
+}
+.num {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11pt;
+  font-weight: 600;
+  color: #d98a11;
+}
+h2 {
+  margin: 0;
+  font-size: 13pt;
+  font-weight: 700;
+}
+.step p {
+  margin: 0;
+  font-size: 10.5pt;
+  line-height: 1.45;
+  font-weight: 500;
+}
+.step.is-stroke {
+  background: #24324a;
+  color: #f4f6fa;
+}
+.step.is-stroke .num { color: #ffd36a; }
+.stroke-art {
+  margin-top: auto;
+}
+.stroke-art svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+}
+</style>
+</head>
+<body>
+<article class="sheet">
+<header class="sheet-top">
+<h1>えあ・ぎたー 使い方</h1>
+<p class="warning">触るのはひとりだけ。同時にみんなでさわらないで。</p>
+</header>
+<ol class="steps"><li class="step"><span class="num">1</span><h2>つながるまで待って</h2><p>「MQTT 接続完了」って出たら、コードを押してね。</p></li><li class="step"><span class="num">2</span><h2>コードを押さえる</h2><p>弾きたいコードのボタンを、指で押したまま。離すとコードも外れるよ。</p></li><li class="step is-stroke"><span class="num">3</span><h2>ストロークする</h2><p>カメラは右手が映る位置に動かして。あとは自分でジャラーン。タイミングはカメラが見てる。</p><div class="stroke-art" role="img" aria-label="右手がカメラに映る位置でストロークしているところ"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" role="img">
+  <rect width="640" height="400" fill="#1a1f2b"/>
+  <rect x="28" y="28" width="584" height="344" rx="10" fill="#24324a"/>
+  <path d="M48 48h36M48 48v36M592 48h-36M592 48v36M48 352h36M48 352v-36M592 352h-36M592 352v-36" fill="none" stroke="#ffd36a" stroke-width="6" stroke-linecap="square"/>
+  <text x="56" y="86" fill="#ffd36a" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="18" font-weight="600">CAM</text>
+  <ellipse cx="210" cy="230" rx="150" ry="118" fill="#3d2a1c"/>
+  <ellipse cx="210" cy="230" rx="58" ry="58" fill="#1a1f2b"/>
+  <ellipse cx="210" cy="230" rx="38" ry="38" fill="#e6e2da"/>
+  <rect x="340" y="188" width="210" height="28" rx="8" fill="#5c4030"/>
+  <g stroke="#c9b39a" stroke-width="2">
+    <line x1="70" y1="176" x2="540" y2="176"/>
+    <line x1="70" y1="188" x2="540" y2="188"/>
+    <line x1="70" y1="200" x2="540" y2="200"/>
+    <line x1="70" y1="212" x2="540" y2="212"/>
+    <line x1="70" y1="224" x2="540" y2="224"/>
+    <line x1="70" y1="236" x2="540" y2="236"/>
+  </g>
+  <path d="M430 150c28 8 62 38 78 78 6 16-8 28-24 24-18-4-38-22-52-42-10-16-14-32-8-44 6-12 18-18 26-16z" fill="#d8b49a"/>
+  <path d="M486 214c18 22 34 48 36 62 2 12-10 18-20 12-16-8-32-30-42-50l26-24z" fill="#c79a7a"/>
+  <ellipse cx="508" cy="292" rx="22" ry="14" transform="rotate(-28 508 292)" fill="#d98a11" stroke="#8a5608" stroke-width="3"/>
+  <path d="M420 168c-40 18-18 70 22 58" fill="none" stroke="#d98a11" stroke-width="6" stroke-linecap="round"/>
+  <text x="320" y="368" text-anchor="middle" fill="#f4f6fa" font-family="Noto Sans JP, Hiragino Sans, sans-serif" font-size="22" font-weight="700">右手がここに映る</text>
+</svg>
+</div></li><li class="step"><span class="num">4</span><h2>コードを外す</h2><p>「開放弦」を押すと、全部はずれる。</p></li><li class="step"><span class="num">5</span><h2>デモを聞く</h2><p>自分で弾かずに聞きたいときは「demo」。カノン進行が流れるよ。コードを押すとデモは止まる。</p></li></ol>
+</article>
+</body>
+</html>

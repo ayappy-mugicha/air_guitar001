@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" role="img">
+  <rect width="640" height="400" fill="#1a1f2b"/>
+  <rect x="28" y="28" width="584" height="344" rx="10" fill="#24324a"/>
+  <path d="M48 48h36M48 48v36M592 48h-36M592 48v36M48 352h36M48 352v-36M592 352h-36M592 352v-36" fill="none" stroke="#ffd36a" stroke-width="6" stroke-linecap="square"/>
+  <text x="56" y="86" fill="#ffd36a" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="18" font-weight="600">CAM</text>
+  <ellipse cx="210" cy="230" rx="150" ry="118" fill="#3d2a1c"/>
+  <ellipse cx="210" cy="230" rx="58" ry="58" fill="#1a1f2b"/>
+  <ellipse cx="210" cy="230" rx="38" ry="38" fill="#e6e2da"/>
+  <rect x="340" y="188" width="210" height="28" rx="8" fill="#5c4030"/>
+  <g stroke="#c9b39a" stroke-width="2">
+    <line x1="70" y1="176" x2="540" y2="176"/>
+    <line x1="70" y1="188" x2="540" y2="188"/>
+    <line x1="70" y1="200" x2="540" y2="200"/>
+    <line x1="70" y1="212" x2="540" y2="212"/>
+    <line x1="70" y1="224" x2="540" y2="224"/>
+    <line x1="70" y1="236" x2="540" y2="236"/>
+  </g>
+  <path d="M430 150c28 8 62 38 78 78 6 16-8 28-24 24-18-4-38-22-52-42-10-16-14-32-8-44 6-12 18-18 26-16z" fill="#d8b49a"/>
+  <path d="M486 214c18 22 34 48 36 62 2 12-10 18-20 12-16-8-32-30-42-50l26-24z" fill="#c79a7a"/>
+  <ellipse cx="508" cy="292" rx="22" ry="14" transform="rotate(-28 508 292)" fill="#d98a11" stroke="#8a5608" stroke-width="3"/>
+  <path d="M420 168c-40 18-18 70 22 58" fill="none" stroke="#d98a11" stroke-width="6" stroke-linecap="round"/>
+  <text x="320" y="368" text-anchor="middle" fill="#f4f6fa" font-family="Noto Sans JP, Hiragino Sans, sans-serif" font-size="22" font-weight="700">右手がここに映る</text>
+</svg>

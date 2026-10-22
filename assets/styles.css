@@ -55,11 +55,181 @@ body {
     min-height: 56px;
 }
 
+.topbar-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    width: 100%;
+}
+
 .topbar h1 {
     margin: 0;
     font-size: 1.25rem;
     font-weight: 700;
     letter-spacing: 0.01em;
+}
+
+.guide-open-button,
+.guide-close-button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 16px;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    background: var(--stage-navy);
+    color: #f4f6fa;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+    box-shadow: 0 4px 0 #1a2436;
+    cursor: pointer;
+}
+
+.guide-open-button:hover,
+.guide-close-button:hover {
+    background: var(--stage-navy-hover);
+}
+
+.guide-open-button:active,
+.guide-close-button:active {
+    transform: translateY(3px);
+    box-shadow: var(--held-inset);
+    background: var(--stage-navy-active);
+}
+
+.guide-open-button:focus-visible,
+.guide-close-button:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 3px;
+}
+
+.guide-open-button:disabled,
+.guide-close-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.guide-dialog[hidden] {
+    display: none !important;
+}
+
+.guide-dialog:not([hidden]) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+}
+
+.guide-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(26, 31, 43, 0.55);
+}
+
+.guide-sheet {
+    position: relative;
+    z-index: 1;
+    margin: 12px auto;
+    width: calc(100% - 24px);
+    max-width: 980px;
+    max-height: calc(100dvh - 24px);
+    overflow: auto;
+    background: var(--panel);
+    color: var(--ink);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.guide-sheet-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.guide-sheet-bar h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.guide-warning {
+    margin: 0;
+    padding: 10px 12px;
+    background: var(--stage-navy);
+    color: #f4f6fa;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.guide-steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.guide-step {
+    background: var(--floor);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.guide-step-num {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--pick-amber);
+}
+
+.guide-step-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.guide-step-body {
+    margin: 0;
+    font-size: 0.98rem;
+    line-height: 1.45;
+    font-weight: 500;
+}
+
+.guide-step.is-stroke {
+    background: var(--stage-navy);
+    color: #f4f6fa;
+}
+
+.guide-step.is-stroke .guide-step-num {
+    color: var(--led-on);
+}
+
+.guide-stroke {
+    width: 100%;
+    max-width: 520px;
+    height: auto;
+    border-radius: 12px;
+    margin-top: 4px;
+}
+
+html.guide-open {
+    overflow: hidden;
+}
+
+html.guide-open .app-shell > :not(.guide-dialog) {
+    pointer-events: none;
 }
 
 .topbar-status {
@@ -341,12 +511,25 @@ body {
         flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
-        max-height: 80px;
         gap: 8px 16px;
+    }
+
+    .topbar-heading {
+        width: auto;
+        flex: 1 1 auto;
     }
 
     .topbar h1 {
         font-size: 1.45rem;
+    }
+
+    .guide-steps {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .guide-step.is-stroke {
+        grid-column: 1 / -1;
     }
 
     .topbar-status {
@@ -371,6 +554,11 @@ body {
 }
 
 @media (hover: hover) and (pointer: fine) {
+    .guide-open-button:hover:not(:disabled),
+    .guide-close-button:hover:not(:disabled) {
+        background: var(--stage-navy-hover);
+    }
+
     .chord-pad:hover:not(.is-held):not(:disabled) {
         background: var(--stage-navy-hover);
     }
@@ -395,14 +583,18 @@ body {
 @media (prefers-reduced-motion: reduce) {
     .chord-pad,
     .full-open-button,
-    .demo-button {
+    .demo-button,
+    .guide-open-button,
+    .guide-close-button {
         transition: none;
     }
 
     .chord-pad.is-held,
     .chord-pad:active,
     .full-open-button:active,
-    .demo-button:active {
+    .demo-button:active,
+    .guide-open-button:active,
+    .guide-close-button:active {
         transform: none;
     }
 
