@@ -2,6 +2,7 @@
 #include "config.h"
 #include "pca9685.h"
 
+#include <Arduino.h>
 #include <string.h>
 
 void strokeBegin() {
