@@ -10,9 +10,6 @@
 static WiFiClient wifi_client;
 static PubSubClient mqtt_client(wifi_client);
 
-static char last_code[16] = {0};
-static char last_stroke[8] = {0};
-
 static void copyPayload(char *dest, size_t dest_len, const byte *payload, unsigned int length) {
     if (dest_len == 0) {
         return;
@@ -22,30 +19,30 @@ static void copyPayload(char *dest, size_t dest_len, const byte *payload, unsign
     dest[n] = '\0';
 }
 
+static void trimPayload(char *message) {
+    size_t len = strlen(message);
+    while (len > 0) {
+        const char c = message[len - 1];
+        if (c != '\r' && c != '\n' && c != ' ' && c != '\t') {
+            break;
+        }
+        message[--len] = '\0';
+    }
+}
+
 static void onMqttMessage(char *topic, byte *payload, unsigned int length) {
     char message[32];
     copyPayload(message, sizeof(message), payload, length);
+    trimPayload(message);
     Serial.printf("%s : %s\n", topic, message);
 
     if (strcmp(topic, MQTT_TOPIC_CODE) == 0) {
-        if (strcmp(message, last_code) == 0) {
-            return;
-        }
-        if (chordsHandlePayload(message)) {
-            strncpy(last_code, message, sizeof(last_code) - 1);
-            last_code[sizeof(last_code) - 1] = '\0';
-        }
+        chordsHandlePayload(message);
         return;
     }
 
     if (strcmp(topic, MQTT_TOPIC_STROKE) == 0) {
-        if (strcmp(message, last_stroke) == 0) {
-            return;
-        }
-        if (strokeHandlePayload(message)) {
-            strncpy(last_stroke, message, sizeof(last_stroke) - 1);
-            last_stroke[sizeof(last_stroke) - 1] = '\0';
-        }
+        strokeHandlePayload(message);
     }
 }
 
