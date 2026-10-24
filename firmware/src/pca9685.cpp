@@ -12,13 +12,20 @@ long pca9685Map(long x, long in_min, long in_max, long out_min, long out_max) {
 
 void pca9685Begin() {
     Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+    Wire.setClock(100000);
     pwm.begin();
     pwm.setPWMFreq(PWM_FREQ);
     delay(10);
 }
 
 void pca9685SetPulseUs(int channel, int pulse_us) {
-    const int off_time = (int)((double)pulse_us * (4096.0 / (1000000.0 / PWM_FREQ)));
+    int off_time = (int)((double)pulse_us * (4096.0 / (1000000.0 / PWM_FREQ)));
+    if (off_time < 0) {
+        off_time = 0;
+    }
+    if (off_time > 4095) {
+        off_time = 4095;
+    }
     pwm.setPWM(channel, 0, off_time);
 }
 
