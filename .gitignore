@@ -1,7 +1,7 @@
 __pycache__
-my-venv001
+.venv
 WiringPi
 .pio
 .vscode
 *.so
-firmware/include/config.h
+/firmware/include/config.h
