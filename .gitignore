@@ -4,3 +4,4 @@ WiringPi
 .pio
 .vscode
 *.so
+firmware/include/config.h
