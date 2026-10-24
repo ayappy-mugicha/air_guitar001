@@ -34,11 +34,13 @@
 #define PWM_FREQ 50
 
 // --- Servo pulse (microseconds) ---
-// Chord servos used a wider pulse range than the stroke servo on Pi.
-#define CHORD_SERVO_MIN_US 1500
-#define CHORD_SERVO_MAX_US 10000
-#define STROKE_SERVO_MIN_US 1500
-#define STROKE_SERVO_MAX_US 3800
+// Pi chordcrl used labels 1500-10000 / 1500-3800 with PWM_FREQ=50 in the
+// tick math, but wrote PRE_SCALE without sleeping so the chip stayed at the
+// default ~197 Hz. Same ticks at real 50 Hz need labels × 50/196.6.
+#define CHORD_SERVO_MIN_US 381
+#define CHORD_SERVO_MAX_US 2543
+#define STROKE_SERVO_MIN_US 381
+#define STROKE_SERVO_MAX_US 966
 
 #define SERVO_ANGLE_MIN 0
 #define SERVO_ANGLE_MAX 180

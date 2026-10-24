@@ -1,6 +1,7 @@
 #include "Arduino.h"
 #include "config.h"
 #include "mqtt_dispatch.h"
+#include "pca9685.h"
 #include "pca9685_stub.h"
 #include "stroke.h"
 
@@ -71,12 +72,28 @@ static void test_stroke_up_down_use_channel_8() {
     expect_true(g_pwm_pulses[1].pulse_us == STROKE_SERVO_MIN_US, "up pulse");
 }
 
+static void test_chord_angle_map_matches_pi_equivalent_pulses() {
+    expect_true(
+        pca9685Map(0, SERVO_ANGLE_MIN, SERVO_ANGLE_MAX, CHORD_SERVO_MIN_US, CHORD_SERVO_MAX_US) ==
+            CHORD_SERVO_MIN_US,
+        "angle 0 maps to CHORD_SERVO_MIN_US");
+    expect_true(
+        pca9685Map(180, SERVO_ANGLE_MIN, SERVO_ANGLE_MAX, CHORD_SERVO_MIN_US, CHORD_SERVO_MAX_US) ==
+            CHORD_SERVO_MAX_US,
+        "angle 180 maps to CHORD_SERVO_MAX_US");
+    expect_true(CHORD_SERVO_MIN_US == 381, "Pi-equivalent chord min us");
+    expect_true(CHORD_SERVO_MAX_US == 2543, "Pi-equivalent chord max us");
+    expect_true(STROKE_SERVO_MIN_US == 381, "Pi-equivalent stroke min us");
+    expect_true(STROKE_SERVO_MAX_US == 966, "Pi-equivalent stroke max us");
+}
+
 int main() {
     test_trim_and_copy();
     test_unknown_topic_does_not_drive_pwm();
     test_different_chords_each_drive_servos();
     test_repeated_payload_still_drives_servos();
     test_stroke_up_down_use_channel_8();
+    test_chord_angle_map_matches_pi_equivalent_pulses();
 
     if (g_failures != 0) {
         printf("%d test(s) failed\n", g_failures);

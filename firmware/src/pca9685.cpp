@@ -1,6 +1,7 @@
 #include "pca9685.h"
 #include "config.h"
 
+#include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
 
@@ -26,7 +27,11 @@ void pca9685SetPulseUs(int channel, int pulse_us) {
     if (off_time > 4095) {
         off_time = 4095;
     }
-    pwm.setPWM(channel, 0, off_time);
+    if (pwm.setPWM(channel, 0, off_time) != 0) {
+        if (pwm.setPWM(channel, 0, off_time) != 0) {
+            Serial.printf("PCA9685 setPWM failed ch=%d pulse=%d\n", channel, pulse_us);
+        }
+    }
 }
 
 void pca9685SetAngle(int channel, int angle, int min_us, int max_us) {
