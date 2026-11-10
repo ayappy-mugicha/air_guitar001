@@ -1,19 +1,24 @@
 #include "mqtt_dispatch.h"
 #include "chords.h"
 #include "config.h"
+#include "session_auth.h"
 #include "stroke.h"
 
 #include <string.h>
 
-void mqttCopyPayload(char *dest, size_t dest_len, const unsigned char *payload, unsigned int length) {
+bool mqttCopyPayload(char *dest, size_t dest_len, const unsigned char *payload, unsigned int length) {
     if (dest == nullptr || dest_len == 0) {
-        return;
+        return false;
     }
-    const size_t n = length < dest_len - 1 ? length : dest_len - 1;
-    if (payload != nullptr && n > 0) {
-        memcpy(dest, payload, n);
+    if (length >= dest_len) {
+        dest[0] = '\0';
+        return false;
     }
-    dest[n] = '\0';
+    if (payload != nullptr && length > 0) {
+        memcpy(dest, payload, length);
+    }
+    dest[length] = '\0';
+    return true;
 }
 
 void mqttTrimPayload(char *message) {
@@ -30,15 +35,42 @@ void mqttTrimPayload(char *message) {
     }
 }
 
+static bool isLegacyPlainStroke(const char *topic, const char *message) {
+    return strcmp(topic, MQTT_TOPIC_STROKE) == 0 &&
+           (strcmp(message, "0") == 0 || strcmp(message, "1") == 0);
+}
+
 bool mqttDispatch(const char *topic, const char *message) {
     if (topic == nullptr || message == nullptr) {
         return false;
     }
-    if (strcmp(topic, MQTT_TOPIC_CODE) == 0) {
-        return chordsHandlePayload(message);
-    }
-    if (strcmp(topic, MQTT_TOPIC_STROKE) == 0) {
+
+    // Site issue #2 JSON-ifies guitar/code only; guitar/stroke stays plain 0/1.
+    // Festival threat model: this path needs no tok/NTP. Anyone on the public
+    // broker can move the stroke servo. Chord commands stay token-gated.
+    if (isLegacyPlainStroke(topic, message)) {
+        if (!sessionAuthAllowRate()) {
+            return false;
+        }
         return strokeHandlePayload(message);
     }
-    return false;
+
+    SessionCommand cmd;
+    if (!sessionAuthVerify(topic, message, &cmd)) {
+        return false;
+    }
+    if (!sessionAuthAllowRate()) {
+        return false;
+    }
+
+    bool ok = false;
+    if (cmd.has_chord) {
+        ok = chordsHandlePayload(cmd.chord);
+    } else if (cmd.has_stroke) {
+        ok = strokeHandlePayload(cmd.stroke);
+    }
+    if (ok) {
+        sessionAuthCommit();
+    }
+    return ok;
 }

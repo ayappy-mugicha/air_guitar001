@@ -4,9 +4,9 @@
 #include <Arduino.h>
 
 /*
- * Copy this file to config.h and fill in Wi-Fi credentials.
- * Chord angles, PCA9685 channels, and MQTT topics match the
- * Raspberry Pi Zero (zeropi) firmware so existing publishers keep working.
+ * Copy this file to config.h and fill in Wi-Fi credentials and SESSION_HMAC_SECRET.
+ * Chord angles, PCA9685 channels, and MQTT topics match the Raspberry Pi Zero
+ * (zeropi) firmware. MQTT payloads must include a signed session token.
  */
 
 // --- Wi-Fi ---
@@ -21,8 +21,26 @@
 #define MQTT_TOPIC_STROKE "guitar/stroke"
 #define MQTT_RECONNECT_DELAY_MS 2000
 
+// --- Session token (HMAC-SHA256) ---
+// Shared with the site that issues visitor tokens. Copy this file to config.h
+// and replace the placeholder with >=16 bytes that do not start with
+// CHANGE_ME. Firmware refuses to boot (and rejects tokens) until then.
+// Do not commit the real secret.
+#ifndef SESSION_HMAC_SECRET
+#define SESSION_HMAC_SECRET "CHANGE_ME_SESSION_HMAC_SECRET"
+#endif
+#define SESSION_TIME_MIN 1600000000
+#define SESSION_CLOCK_SKEW_SEC 30
+#define NTP_SERVER_1 "pool.ntp.org"
+#define NTP_SERVER_2 "time.google.com"
+#define MQTT_CMD_RATE_LIMIT 20
+#define MQTT_CMD_RATE_WINDOW_MS 1000
+#ifndef SESSION_SID_SLOTS
+#define SESSION_SID_SLOTS 64
+#endif
+
 // --- I2C / PCA9685 ---
-// Seeed XIAO ESP32S3 defaults: D4 = SDA, D5 = SCL
+// Seeed XIAO ESP32C3 defaults: D4 = SDA, D5 = SCL
 #ifndef I2C_SDA_PIN
 #define I2C_SDA_PIN SDA
 #endif

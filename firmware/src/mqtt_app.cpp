@@ -3,11 +3,20 @@
 #include "config.h"
 #include "mqtt_dispatch.h"
 #include "pca9685.h"
+#include "session_auth.h"
 #include "stroke.h"
 
 #include <PubSubClient.h>
 #include <WiFi.h>
 #include <string.h>
+#include <time.h>
+
+#ifndef NTP_SERVER_1
+#define NTP_SERVER_1 "pool.ntp.org"
+#endif
+#ifndef NTP_SERVER_2
+#define NTP_SERVER_2 "time.google.com"
+#endif
 
 static WiFiClient wifi_client;
 static PubSubClient mqtt_client(wifi_client);
@@ -18,11 +27,11 @@ static PubSubClient mqtt_client(wifi_client);
 // Queue the command here and apply it after loop() returns — same split as
 // the Raspberry Pi msg_queue path.
 static const int MQTT_CMD_QUEUE_SIZE = 8;
-static const int MQTT_CMD_TEXT_LEN = 32;
+static const int MQTT_CMD_MAX_OK_PER_LOOP = 1;
 
 struct MqttCmd {
-    char topic[MQTT_CMD_TEXT_LEN];
-    char payload[MQTT_CMD_TEXT_LEN];
+    char topic[MQTT_CMD_TOPIC_LEN];
+    char payload[MQTT_CMD_PAYLOAD_LEN];
 };
 
 static MqttCmd mqtt_cmd_queue[MQTT_CMD_QUEUE_SIZE];
@@ -35,29 +44,38 @@ static bool enqueueMqttCmd(const char *topic, const char *payload) {
         return false;
     }
     MqttCmd &slot = mqtt_cmd_queue[mqtt_cmd_tail];
-    strncpy(slot.topic, topic, MQTT_CMD_TEXT_LEN - 1);
-    slot.topic[MQTT_CMD_TEXT_LEN - 1] = '\0';
-    strncpy(slot.payload, payload, MQTT_CMD_TEXT_LEN - 1);
-    slot.payload[MQTT_CMD_TEXT_LEN - 1] = '\0';
+    strncpy(slot.topic, topic, MQTT_CMD_TOPIC_LEN - 1);
+    slot.topic[MQTT_CMD_TOPIC_LEN - 1] = '\0';
+    strncpy(slot.payload, payload, MQTT_CMD_PAYLOAD_LEN - 1);
+    slot.payload[MQTT_CMD_PAYLOAD_LEN - 1] = '\0';
     mqtt_cmd_tail = (mqtt_cmd_tail + 1) % MQTT_CMD_QUEUE_SIZE;
     mqtt_cmd_count++;
     return true;
 }
 
 static void drainMqttCmdQueue() {
-    while (mqtt_cmd_count > 0) {
+    int ok = 0;
+    while (mqtt_cmd_count > 0 && ok < MQTT_CMD_MAX_OK_PER_LOOP) {
         const MqttCmd cmd = mqtt_cmd_queue[mqtt_cmd_head];
         mqtt_cmd_head = (mqtt_cmd_head + 1) % MQTT_CMD_QUEUE_SIZE;
         mqtt_cmd_count--;
-        mqttDispatch(cmd.topic, cmd.payload);
+        if (mqttDispatch(cmd.topic, cmd.payload)) {
+            ok++;
+        }
     }
 }
 
 static void onMqttMessage(char *topic, byte *payload, unsigned int length) {
-    char message[MQTT_CMD_TEXT_LEN];
-    mqttCopyPayload(message, sizeof(message), payload, length);
+    if (topic == nullptr || strlen(topic) >= MQTT_CMD_TOPIC_LEN || length >= MQTT_CMD_PAYLOAD_LEN) {
+        return;
+    }
+
+    char message[MQTT_CMD_PAYLOAD_LEN];
+    if (!mqttCopyPayload(message, sizeof(message), payload, length)) {
+        return;
+    }
     mqttTrimPayload(message);
-    Serial.printf("%s : %s\n", topic, message);
+    Serial.printf("%s : %u bytes\n", topic, length);
 
     if (!enqueueMqttCmd(topic, message)) {
         Serial.println("MQTT command queue full, dropping payload");
@@ -78,6 +96,37 @@ static void connectWifi() {
     Serial.println(WiFi.localIP());
 }
 
+static bool g_ntp_logged_sync = false;
+static unsigned long g_ntp_last_wait_log_ms = 0;
+
+static void syncNtp() {
+    configTime(0, 0, NTP_SERVER_1, NTP_SERVER_2);
+    if (sessionAuthClockLocked()) {
+        // Wi-Fi reconnect may restart SNTP. Auth still uses the locked millis clock.
+        Serial.println("NTP: wall resync requested (auth clock stays locked)");
+        return;
+    }
+    g_ntp_logged_sync = false;
+    g_ntp_last_wait_log_ms = 0;
+    Serial.println("NTP: waiting for sync (chord commands rejected until auth clock locks)");
+}
+
+static void logNtpStatus() {
+    if (sessionAuthClockLocked()) {
+        if (!g_ntp_logged_sync) {
+            Serial.println("NTP: auth clock locked (later SNTP jumps ignored)");
+            g_ntp_logged_sync = true;
+        }
+        return;
+    }
+    g_ntp_logged_sync = false;
+    const unsigned long now = millis();
+    if (g_ntp_last_wait_log_ms == 0 || now - g_ntp_last_wait_log_ms >= 5000UL) {
+        g_ntp_last_wait_log_ms = now;
+        Serial.println("NTP: not synced, chord commands rejected");
+    }
+}
+
 static void connectMqtt() {
     String client_id = String(MQTT_CLIENT_ID_PREFIX) + String((uint32_t)ESP.getEfuseMac(), HEX);
     while (!mqtt_client.connected()) {
@@ -93,8 +142,21 @@ static void connectMqtt() {
     }
 }
 
+static void requireSessionSecret() {
+    if (sessionSecretIsUsable(SESSION_HMAC_SECRET)) {
+        return;
+    }
+    Serial.println("SESSION_HMAC_SECRET is missing, shorter than 16 bytes, or still CHANGE_ME");
+    Serial.println("Copy config.example.h to config.h and set a real secret. Halted.");
+    while (true) {
+        delay(5000);
+    }
+}
+
 void mqttAppBegin() {
+    requireSessionSecret();
     connectWifi();
+    syncNtp();
     // Re-init I2C after Wi-Fi. Starting PCA9685 before the radio comes up
     // leaves the bus working for boot poses and the first command, then
     // later setPWM calls fail while Serial/MQTT keep running.
@@ -102,6 +164,7 @@ void mqttAppBegin() {
     chordsBegin();
     strokeBegin();
     mqtt_client.setServer(MQTT_BROKER, MQTT_PORT);
+    mqtt_client.setBufferSize(MQTT_PACKET_BUFFER_LEN);
     mqtt_client.setCallback(onMqttMessage);
     connectMqtt();
 }
@@ -109,10 +172,13 @@ void mqttAppBegin() {
 void mqttAppLoop() {
     if (WiFi.status() != WL_CONNECTED) {
         connectWifi();
+        syncNtp();
     }
     if (!mqtt_client.connected()) {
         connectMqtt();
     }
     mqtt_client.loop();
+    sessionAuthTick();
+    logNtpStatus();
     drainMqttCmdQueue();
 }
