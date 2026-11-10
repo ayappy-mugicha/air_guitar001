@@ -66,4 +66,5 @@ python render_guide_sheet.py
 
 [Web サイト用の、リポジトリはこちら](
 https://github.com/ayappy-mugicha/MQTTguitarchordwebsite)
+
 HTML は `assets/guide-sheet.html`、PDF は `assets/guide.pdf`（横A4）。Chrome/Chromium が必要。
