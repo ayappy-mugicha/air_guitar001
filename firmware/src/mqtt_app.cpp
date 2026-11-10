@@ -3,6 +3,7 @@
 #include "config.h"
 #include "mqtt_dispatch.h"
 #include "pca9685.h"
+#include "session_auth.h"
 #include "stroke.h"
 
 #include <PubSubClient.h>
@@ -95,8 +96,35 @@ static void connectWifi() {
     Serial.println(WiFi.localIP());
 }
 
+static bool g_ntp_logged_sync = false;
+static unsigned long g_ntp_last_wait_log_ms = 0;
+
 static void syncNtp() {
     configTime(0, 0, NTP_SERVER_1, NTP_SERVER_2);
+    if (sessionAuthClockLocked()) {
+        // Wi-Fi reconnect may restart SNTP. Auth still uses the locked millis clock.
+        Serial.println("NTP: wall resync requested (auth clock stays locked)");
+        return;
+    }
+    g_ntp_logged_sync = false;
+    g_ntp_last_wait_log_ms = 0;
+    Serial.println("NTP: waiting for sync (chord commands rejected until auth clock locks)");
+}
+
+static void logNtpStatus() {
+    if (sessionAuthClockLocked()) {
+        if (!g_ntp_logged_sync) {
+            Serial.println("NTP: auth clock locked (later SNTP jumps ignored)");
+            g_ntp_logged_sync = true;
+        }
+        return;
+    }
+    g_ntp_logged_sync = false;
+    const unsigned long now = millis();
+    if (g_ntp_last_wait_log_ms == 0 || now - g_ntp_last_wait_log_ms >= 5000UL) {
+        g_ntp_last_wait_log_ms = now;
+        Serial.println("NTP: not synced, chord commands rejected");
+    }
 }
 
 static void connectMqtt() {
@@ -114,7 +142,19 @@ static void connectMqtt() {
     }
 }
 
+static void requireSessionSecret() {
+    if (sessionSecretIsUsable(SESSION_HMAC_SECRET)) {
+        return;
+    }
+    Serial.println("SESSION_HMAC_SECRET is missing, shorter than 16 chars, or still CHANGE_ME");
+    Serial.println("Copy config.example.h to config.h and set a real secret. Halted.");
+    while (true) {
+        delay(5000);
+    }
+}
+
 void mqttAppBegin() {
+    requireSessionSecret();
     connectWifi();
     syncNtp();
     // Re-init I2C after Wi-Fi. Starting PCA9685 before the radio comes up
@@ -124,7 +164,7 @@ void mqttAppBegin() {
     chordsBegin();
     strokeBegin();
     mqtt_client.setServer(MQTT_BROKER, MQTT_PORT);
-    mqtt_client.setBufferSize(MQTT_CMD_PAYLOAD_LEN);
+    mqtt_client.setBufferSize(MQTT_PACKET_BUFFER_LEN);
     mqtt_client.setCallback(onMqttMessage);
     connectMqtt();
 }
@@ -138,5 +178,7 @@ void mqttAppLoop() {
         connectMqtt();
     }
     mqtt_client.loop();
+    sessionAuthTick();
+    logNtpStatus();
     drainMqttCmdQueue();
 }

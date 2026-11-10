@@ -70,7 +70,7 @@ struct TokenPayload {
 static bool g_now_override = false;
 static time_t g_now_value = 0;
 static bool g_millis_override = false;
-static unsigned long g_millis_value = 0;
+static uint32_t g_millis_value = 0;
 
 struct SessionSlot {
     char sid[SESSION_SID_LEN + 1];
@@ -88,14 +88,12 @@ static SessionCommand g_pending;
 static unsigned g_rate_count = 0;
 static unsigned long g_rate_window_start = 0;
 
-static time_t sessionNow(void) {
-    if (g_now_override) {
-        return g_now_value;
-    }
-    return time(nullptr);
-}
+static bool g_clock_locked = false;
+static time_t g_lock_unix = 0;
+static uint32_t g_last_millis = 0;
+static uint64_t g_elapsed_ms = 0;
 
-static unsigned long sessionMillis(void) {
+static uint32_t sessionMillis(void) {
     if (g_millis_override) {
         return g_millis_value;
     }
@@ -106,11 +104,44 @@ static unsigned long sessionMillis(void) {
 #endif
 }
 
+static void sessionAdvanceMillis(uint32_t ms) {
+    if (!g_clock_locked) {
+        return;
+    }
+    // uint32 delta matches ESP32 millis() wrap. Adding into uint64 keeps
+    // elapsed from collapsing to 0 the way a 64-bit unsigned long would.
+    const uint32_t delta = ms - g_last_millis;
+    g_last_millis = ms;
+    g_elapsed_ms += (uint64_t)delta;
+}
+
+static time_t sessionNow(void) {
+    const time_t wall = g_now_override ? g_now_value : time(nullptr);
+    const uint32_t ms = sessionMillis();
+    if (!g_clock_locked) {
+        if (wall >= (time_t)SESSION_TIME_MIN) {
+            g_clock_locked = true;
+            g_lock_unix = wall;
+            g_last_millis = ms;
+            g_elapsed_ms = 0;
+        }
+        return wall;
+    }
+    // After the first plausible NTP sample, ignore later wall-clock jumps
+    // (including SNTP spoof / rollback) and advance only with millis().
+    sessionAdvanceMillis(ms);
+    return g_lock_unix + (time_t)(g_elapsed_ms / 1000ULL);
+}
+
 void sessionAuthReset(void) {
     g_now_override = false;
     g_now_value = 0;
     g_millis_override = false;
     g_millis_value = 0;
+    g_clock_locked = false;
+    g_lock_unix = 0;
+    g_last_millis = 0;
+    g_elapsed_ms = 0;
     memset(g_slots, 0, sizeof(g_slots));
     g_have_pending = false;
     memset(&g_pending, 0, sizeof(g_pending));
@@ -125,7 +156,31 @@ void sessionAuthSetNow(time_t now) {
 
 void sessionAuthSetMillis(unsigned long ms) {
     g_millis_override = true;
-    g_millis_value = ms;
+    g_millis_value = (uint32_t)ms;
+}
+
+void sessionAuthTick(void) {
+    (void)sessionNow();
+}
+
+bool sessionAuthClockLocked(void) {
+    return g_clock_locked;
+}
+
+bool sessionSecretIsUsable(const char *secret) {
+    if (secret == nullptr) {
+        return false;
+    }
+    const size_t n = strlen(secret);
+    if (n < (size_t)SESSION_SECRET_MIN_LEN) {
+        return false;
+    }
+    static const char kPlaceholder[] = "CHANGE_ME";
+    const size_t plen = sizeof(kPlaceholder) - 1;
+    if (n >= plen && memcmp(secret, kPlaceholder, plen) == 0) {
+        return false;
+    }
+    return true;
 }
 
 static const char *skipWs(const char *p, const char *end) {
@@ -423,10 +478,10 @@ static bool verifyToken(const JsonString *tok, SessionCommand *out) {
     }
 
     const char *secret = SESSION_HMAC_SECRET;
-    const size_t secret_len = strlen(secret);
-    if (secret_len == 0) {
+    if (!sessionSecretIsUsable(secret)) {
         return false;
     }
+    const size_t secret_len = strlen(secret);
 
     unsigned char expect[32];
     if (!sessionHmacSha256((const unsigned char *)secret, secret_len,
