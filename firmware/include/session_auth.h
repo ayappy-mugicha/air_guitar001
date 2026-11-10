@@ -17,12 +17,16 @@
 #ifndef SESSION_TOK_MAX
 #define SESSION_TOK_MAX 200
 #endif
+#ifndef SESSION_SID_SLOTS
+#define SESSION_SID_SLOTS 32
+#endif
 
 struct SessionCommand {
     char chord[SESSION_CHORD_MAX];
     char stroke[SESSION_STROKE_MAX];
     char sid[SESSION_SID_LEN + 1];
     uint32_t seq;
+    int64_t exp;
     bool has_chord;
     bool has_stroke;
 };

@@ -31,6 +31,9 @@
 #define NTP_SERVER_2 "time.google.com"
 #define MQTT_CMD_RATE_LIMIT 20
 #define MQTT_CMD_RATE_WINDOW_MS 1000
+#ifndef SESSION_SID_SLOTS
+#define SESSION_SID_SLOTS 32
+#endif
 
 // --- I2C / PCA9685 ---
 // Seeed XIAO ESP32C3 defaults: D4 = SDA, D5 = SCL

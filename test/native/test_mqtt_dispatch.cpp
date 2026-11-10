@@ -244,6 +244,74 @@ static void test_sid_change_resets_seq() {
     expect_true(mqttDispatch(MQTT_TOPIC_CODE, cmd), "new sid resets seq");
 }
 
+static void test_previous_sid_cannot_replay_after_handover() {
+    beginCase();
+    char tok_a[192];
+    char tok_b[192];
+    char cmd[256];
+    const char sid2[] = "ffffffffffffffffffffffffffffffff";
+    makeToken(tok_a, sizeof(tok_a), kSid, kIat, kExp);
+    makeToken(tok_b, sizeof(tok_b), sid2, kIat, kExp);
+
+    makeCode(cmd, sizeof(cmd), tok_a, "c", 5);
+    expect_true(mqttDispatch(MQTT_TOPIC_CODE, cmd), "visitor A seq 5");
+    makeCode(cmd, sizeof(cmd), tok_b, "f", 1);
+    expect_true(mqttDispatch(MQTT_TOPIC_CODE, cmd), "visitor B takes over");
+
+    pca9685ResetLog();
+    makeCode(cmd, sizeof(cmd), tok_a, "c", 5);
+    expect_true(!mqttDispatch(MQTT_TOPIC_CODE, cmd), "A's consumed seq rejected after B");
+    makeCode(cmd, sizeof(cmd), tok_a, "g", 6);
+    expect_true(!mqttDispatch(MQTT_TOPIC_CODE, cmd), "A's leftover token cannot send new seq after B");
+    expect_true(g_pwm_pulses.empty(), "previous sid writes no PWM after handover");
+
+    makeCode(cmd, sizeof(cmd), tok_b, "g", 2);
+    expect_true(mqttDispatch(MQTT_TOPIC_CODE, cmd), "active sid still advances seq");
+}
+
+static void test_expired_sid_slot_is_freed() {
+    beginCase();
+    char tok[192];
+    char cmd[256];
+    makeToken(tok, sizeof(tok), kSid, kIat, kExp);
+    makeCode(cmd, sizeof(cmd), tok, "c", 1);
+    expect_true(mqttDispatch(MQTT_TOPIC_CODE, cmd), "A occupies a slot");
+
+    sessionAuthSetNow(kExp);
+    const char sid2[] = "ffffffffffffffffffffffffffffffff";
+    makeToken(tok, sizeof(tok), sid2, kExp, kExp + 600);
+    makeCode(cmd, sizeof(cmd), tok, "f", 1);
+    expect_true(mqttDispatch(MQTT_TOPIC_CODE, cmd), "new sid after previous token expired");
+
+    char tok_a[192];
+    makeToken(tok_a, sizeof(tok_a), kSid, kIat, kExp);
+    pca9685ResetLog();
+    makeCode(cmd, sizeof(cmd), tok_a, "c", 2);
+    expect_true(!mqttDispatch(MQTT_TOPIC_CODE, cmd), "expired A token still rejected");
+    expect_true(g_pwm_pulses.empty(), "expired token writes no PWM");
+}
+
+static void test_session_slot_limit() {
+    beginCase();
+    char sid[SESSION_SID_LEN + 1];
+    char tok[192];
+    char cmd[256];
+    for (unsigned i = 0; i < (unsigned)SESSION_SID_SLOTS; i++) {
+        sessionAuthSetMillis(i * (unsigned)MQTT_CMD_RATE_WINDOW_MS);
+        snprintf(sid, sizeof(sid), "%032x", i + 1);
+        makeToken(tok, sizeof(tok), sid, kIat, kExp);
+        makeCode(cmd, sizeof(cmd), tok, "c", 1);
+        expect_true(mqttDispatch(MQTT_TOPIC_CODE, cmd), "fill session slot");
+    }
+    pca9685ResetLog();
+    sessionAuthSetMillis((unsigned)SESSION_SID_SLOTS * (unsigned)MQTT_CMD_RATE_WINDOW_MS);
+    snprintf(sid, sizeof(sid), "%032x", (unsigned)SESSION_SID_SLOTS + 1);
+    makeToken(tok, sizeof(tok), sid, kIat, kExp);
+    makeCode(cmd, sizeof(cmd), tok, "c", 1);
+    expect_true(!mqttDispatch(MQTT_TOPIC_CODE, cmd), "no slot for extra sid");
+    expect_true(g_pwm_pulses.empty(), "overflow sid writes no PWM");
+}
+
 static void test_unknown_chord_rejected() {
     beginCase();
     char tok[192];
@@ -336,6 +404,9 @@ int main() {
     test_bad_signature_and_expiry_rejected();
     test_seq_replay_and_rewind_rejected();
     test_sid_change_resets_seq();
+    test_previous_sid_cannot_replay_after_handover();
+    test_expired_sid_slot_is_freed();
+    test_session_slot_limit();
     test_unknown_chord_rejected();
     test_malformed_json_rejected();
     test_unsynced_clock_fail_closed();

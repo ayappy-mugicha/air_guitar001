@@ -42,7 +42,7 @@ Arduino IDE を使う場合は `firmware/src` と `firmware/include` をスケ�
 
 - `chord`: `c` `f` `d` `dm` `e` `a` `em` `am` `g` `open`
 - `stroke`: `"0"` = down、`"1"` = up
-- `seq`: 同じ `sid` で前回より大きい整数。`sid` が変わるとリセット
+- `seq`: 同じ `sid` で前回より大きい整数。新しい `sid` が受理されると、以前の `sid` はトークン期限まで拒否します（共有ギターのセッション交代）
 - トークン: `base64url(payload JSON) + "." + base64url(HMAC-SHA256(秘密鍵, base64url(payload JSON)))`
 - トークン payload: `{"sid":"<hex32>","iat":<unix>,"exp":<iat+600>}`
 

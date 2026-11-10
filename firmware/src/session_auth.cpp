@@ -72,9 +72,15 @@ static time_t g_now_value = 0;
 static bool g_millis_override = false;
 static unsigned long g_millis_value = 0;
 
-static bool g_have_seq = false;
-static uint32_t g_last_seq = 0;
-static char g_last_sid[SESSION_SID_LEN + 1];
+struct SessionSlot {
+    char sid[SESSION_SID_LEN + 1];
+    uint32_t last_seq;
+    int64_t exp;
+    bool occupied;
+    bool current;
+};
+
+static SessionSlot g_slots[SESSION_SID_SLOTS];
 
 static bool g_have_pending = false;
 static SessionCommand g_pending;
@@ -105,9 +111,7 @@ void sessionAuthReset(void) {
     g_now_value = 0;
     g_millis_override = false;
     g_millis_value = 0;
-    g_have_seq = false;
-    g_last_seq = 0;
-    g_last_sid[0] = '\0';
+    memset(g_slots, 0, sizeof(g_slots));
     g_have_pending = false;
     memset(&g_pending, 0, sizeof(g_pending));
     g_rate_count = 0;
@@ -471,14 +475,51 @@ static bool verifyToken(const JsonString *tok, SessionCommand *out) {
     if (!copyCstr(out->sid, sizeof(out->sid), &claims.sid)) {
         return false;
     }
+    out->exp = claims.exp;
     return true;
 }
 
-static bool seqAllowed(const SessionCommand *cmd) {
-    if (!g_have_seq || strcmp(g_last_sid, cmd->sid) != 0) {
-        return true;
+static void evictExpiredSlots(time_t now) {
+    for (int i = 0; i < SESSION_SID_SLOTS; i++) {
+        if (g_slots[i].occupied && now >= (time_t)g_slots[i].exp) {
+            memset(&g_slots[i], 0, sizeof(g_slots[i]));
+        }
     }
-    return cmd->seq > g_last_seq;
+}
+
+static SessionSlot *findSlot(const char *sid) {
+    for (int i = 0; i < SESSION_SID_SLOTS; i++) {
+        if (g_slots[i].occupied && strcmp(g_slots[i].sid, sid) == 0) {
+            return &g_slots[i];
+        }
+    }
+    return nullptr;
+}
+
+static SessionSlot *allocSlot(void) {
+    for (int i = 0; i < SESSION_SID_SLOTS; i++) {
+        if (!g_slots[i].occupied) {
+            return &g_slots[i];
+        }
+    }
+    return nullptr;
+}
+
+// HMAC covers sid/iat/exp only (locked token format). Command fields are
+// authorized as a bearer session. Keep every seen sid until exp, but only the
+// most recently committed sid may drive servos, so a previous visitor's token
+// cannot be replayed after handover.
+static bool seqAllowed(const SessionCommand *cmd) {
+    const time_t now = sessionNow();
+    evictExpiredSlots(now);
+    SessionSlot *slot = findSlot(cmd->sid);
+    if (slot == nullptr) {
+        return allocSlot() != nullptr;
+    }
+    if (!slot->current) {
+        return false;
+    }
+    return cmd->seq > slot->last_seq;
 }
 
 bool sessionAuthVerify(const char *topic, const char *message, SessionCommand *out) {
@@ -555,8 +596,23 @@ void sessionAuthCommit(void) {
     if (!g_have_pending) {
         return;
     }
-    memcpy(g_last_sid, g_pending.sid, sizeof(g_last_sid));
-    g_last_seq = g_pending.seq;
-    g_have_seq = true;
+    evictExpiredSlots(sessionNow());
+    SessionSlot *slot = findSlot(g_pending.sid);
+    if (slot == nullptr) {
+        slot = allocSlot();
+        if (slot == nullptr) {
+            g_have_pending = false;
+            return;
+        }
+        memset(slot, 0, sizeof(*slot));
+        memcpy(slot->sid, g_pending.sid, sizeof(slot->sid));
+        slot->occupied = true;
+    }
+    slot->last_seq = g_pending.seq;
+    slot->exp = g_pending.exp;
+    for (int i = 0; i < SESSION_SID_SLOTS; i++) {
+        g_slots[i].current = false;
+    }
+    slot->current = true;
     g_have_pending = false;
 }
