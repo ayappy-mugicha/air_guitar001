@@ -18,7 +18,10 @@
 #define SESSION_TOK_MAX 200
 #endif
 #ifndef SESSION_SID_SLOTS
-#define SESSION_SID_SLOTS 32
+#define SESSION_SID_SLOTS 64
+#endif
+#ifndef SESSION_SECRET_MIN_LEN
+#define SESSION_SECRET_MIN_LEN 16
 #endif
 
 struct SessionCommand {
@@ -32,8 +35,11 @@ struct SessionCommand {
 };
 
 void sessionAuthReset(void);
+// After the first synced sample, auth time follows millis() and ignores later
+// wall-clock jumps. Tests that need time to pass should advance SetMillis.
 void sessionAuthSetNow(time_t now);
 void sessionAuthSetMillis(unsigned long ms);
+bool sessionSecretIsUsable(const char *secret);
 
 bool sessionAuthVerify(const char *topic, const char *message, SessionCommand *out);
 bool sessionAuthAllowRate(void);

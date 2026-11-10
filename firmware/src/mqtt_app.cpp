@@ -3,6 +3,7 @@
 #include "config.h"
 #include "mqtt_dispatch.h"
 #include "pca9685.h"
+#include "session_auth.h"
 #include "stroke.h"
 
 #include <PubSubClient.h>
@@ -95,8 +96,33 @@ static void connectWifi() {
     Serial.println(WiFi.localIP());
 }
 
+static bool g_ntp_logged_sync = false;
+static unsigned long g_ntp_last_wait_log_ms = 0;
+
+static bool ntpSynced() {
+    return time(nullptr) >= (time_t)SESSION_TIME_MIN;
+}
+
 static void syncNtp() {
     configTime(0, 0, NTP_SERVER_1, NTP_SERVER_2);
+    g_ntp_logged_sync = false;
+    g_ntp_last_wait_log_ms = 0;
+    Serial.println("NTP: waiting for sync (commands rejected until then)");
+}
+
+static void logNtpStatus() {
+    if (ntpSynced()) {
+        if (!g_ntp_logged_sync) {
+            Serial.printf("NTP: synced unix=%ld\n", (long)time(nullptr));
+            g_ntp_logged_sync = true;
+        }
+        return;
+    }
+    const unsigned long now = millis();
+    if (g_ntp_last_wait_log_ms == 0 || now - g_ntp_last_wait_log_ms >= 5000UL) {
+        g_ntp_last_wait_log_ms = now;
+        Serial.println("NTP: not synced, commands rejected");
+    }
 }
 
 static void connectMqtt() {
@@ -114,7 +140,19 @@ static void connectMqtt() {
     }
 }
 
+static void requireSessionSecret() {
+    if (sessionSecretIsUsable(SESSION_HMAC_SECRET)) {
+        return;
+    }
+    Serial.println("SESSION_HMAC_SECRET is missing, shorter than 16 chars, or still CHANGE_ME");
+    Serial.println("Copy config.example.h to config.h and set a real secret. Halted.");
+    while (true) {
+        delay(5000);
+    }
+}
+
 void mqttAppBegin() {
+    requireSessionSecret();
     connectWifi();
     syncNtp();
     // Re-init I2C after Wi-Fi. Starting PCA9685 before the radio comes up
@@ -124,7 +162,7 @@ void mqttAppBegin() {
     chordsBegin();
     strokeBegin();
     mqtt_client.setServer(MQTT_BROKER, MQTT_PORT);
-    mqtt_client.setBufferSize(MQTT_CMD_PAYLOAD_LEN);
+    mqtt_client.setBufferSize(MQTT_PACKET_BUFFER_LEN);
     mqtt_client.setCallback(onMqttMessage);
     connectMqtt();
 }
@@ -138,5 +176,6 @@ void mqttAppLoop() {
         connectMqtt();
     }
     mqtt_client.loop();
+    logNtpStatus();
     drainMqttCmdQueue();
 }

@@ -88,12 +88,9 @@ static SessionCommand g_pending;
 static unsigned g_rate_count = 0;
 static unsigned long g_rate_window_start = 0;
 
-static time_t sessionNow(void) {
-    if (g_now_override) {
-        return g_now_value;
-    }
-    return time(nullptr);
-}
+static bool g_clock_locked = false;
+static time_t g_lock_unix = 0;
+static unsigned long g_lock_millis = 0;
 
 static unsigned long sessionMillis(void) {
     if (g_millis_override) {
@@ -106,11 +103,31 @@ static unsigned long sessionMillis(void) {
 #endif
 }
 
+static time_t sessionNow(void) {
+    const time_t wall = g_now_override ? g_now_value : time(nullptr);
+    const unsigned long ms = sessionMillis();
+    if (!g_clock_locked) {
+        if (wall >= (time_t)SESSION_TIME_MIN) {
+            g_clock_locked = true;
+            g_lock_unix = wall;
+            g_lock_millis = ms;
+        }
+        return wall;
+    }
+    // After the first plausible NTP sample, ignore later wall-clock jumps
+    // (including SNTP spoof / rollback) and advance only with millis().
+    const unsigned long elapsed_ms = ms - g_lock_millis;
+    return g_lock_unix + (time_t)(elapsed_ms / 1000UL);
+}
+
 void sessionAuthReset(void) {
     g_now_override = false;
     g_now_value = 0;
     g_millis_override = false;
     g_millis_value = 0;
+    g_clock_locked = false;
+    g_lock_unix = 0;
+    g_lock_millis = 0;
     memset(g_slots, 0, sizeof(g_slots));
     g_have_pending = false;
     memset(&g_pending, 0, sizeof(g_pending));
@@ -126,6 +143,22 @@ void sessionAuthSetNow(time_t now) {
 void sessionAuthSetMillis(unsigned long ms) {
     g_millis_override = true;
     g_millis_value = ms;
+}
+
+bool sessionSecretIsUsable(const char *secret) {
+    if (secret == nullptr) {
+        return false;
+    }
+    const size_t n = strlen(secret);
+    if (n < (size_t)SESSION_SECRET_MIN_LEN) {
+        return false;
+    }
+    static const char kPlaceholder[] = "CHANGE_ME";
+    const size_t plen = sizeof(kPlaceholder) - 1;
+    if (n >= plen && memcmp(secret, kPlaceholder, plen) == 0) {
+        return false;
+    }
+    return true;
 }
 
 static const char *skipWs(const char *p, const char *end) {
@@ -423,10 +456,10 @@ static bool verifyToken(const JsonString *tok, SessionCommand *out) {
     }
 
     const char *secret = SESSION_HMAC_SECRET;
-    const size_t secret_len = strlen(secret);
-    if (secret_len == 0) {
+    if (!sessionSecretIsUsable(secret)) {
         return false;
     }
+    const size_t secret_len = strlen(secret);
 
     unsigned char expect[32];
     if (!sessionHmacSha256((const unsigned char *)secret, secret_len,

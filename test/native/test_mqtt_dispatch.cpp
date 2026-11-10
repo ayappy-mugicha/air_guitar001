@@ -137,7 +137,7 @@ static void test_python_known_token_vector() {
     beginCase();
     const char tok[] =
         "eyJzaWQiOiIwMTIzNDU2Nzg5YWJjZGVmMDEyMzQ1Njc4OWFiY2RlZiIsImlhdCI6MTczMTIwMDAwMCwiZXhwIjoxNzMx"
-        "MjAwNjAwfQ.fwdm6J0CLwSXW1ownhleAVM32a-s9sfjiSUZRVxsD6M";
+        "MjAwNjAwfQ.RCqzpqBCmW6SL8RiNp_KB0yahpO3kTvOQZKhndLdyqI";
     char cmd[256];
     makeCode(cmd, sizeof(cmd), tok, "c", 42);
     expect_true(mqttDispatch(MQTT_TOPIC_CODE, cmd), "python HMAC vector is accepted");
@@ -277,7 +277,7 @@ static void test_expired_sid_slot_is_freed() {
     makeCode(cmd, sizeof(cmd), tok, "c", 1);
     expect_true(mqttDispatch(MQTT_TOPIC_CODE, cmd), "A occupies a slot");
 
-    sessionAuthSetNow(kExp);
+    sessionAuthSetMillis((unsigned long)(kExp - kNow) * 1000UL);
     const char sid2[] = "ffffffffffffffffffffffffffffffff";
     makeToken(tok, sizeof(tok), sid2, kExp, kExp + 600);
     makeCode(cmd, sizeof(cmd), tok, "f", 1);
@@ -377,6 +377,66 @@ static void test_rate_limit() {
     expect_true(mqttDispatch(MQTT_TOPIC_CODE, cmd), "command accepted in next window");
 }
 
+static void test_numeric_stroke_rejected() {
+    beginCase();
+    char tok[192];
+    char cmd[256];
+    makeToken(tok, sizeof(tok), kSid, kIat, kExp);
+    snprintf(cmd, sizeof(cmd), "{\"v\":1,\"tok\":\"%s\",\"stroke\":0,\"seq\":1}", tok);
+    expect_true(!mqttDispatch(MQTT_TOPIC_STROKE, cmd), "numeric stroke JSON rejected");
+    snprintf(cmd, sizeof(cmd), "{\"v\":1,\"tok\":\"%s\",\"stroke\":1,\"seq\":1}", tok);
+    expect_true(!mqttDispatch(MQTT_TOPIC_STROKE, cmd), "numeric stroke 1 rejected");
+    expect_true(g_pwm_pulses.empty(), "numeric stroke writes no PWM");
+}
+
+static void test_clock_ignores_ntp_rollback() {
+    beginCase();
+    char tok[192];
+    char cmd[256];
+    makeToken(tok, sizeof(tok), kSid, kIat, kExp);
+    makeCode(cmd, sizeof(cmd), tok, "c", 1);
+    expect_true(mqttDispatch(MQTT_TOPIC_CODE, cmd), "token valid before expiry");
+
+    sessionAuthSetMillis((unsigned long)(kExp - kNow) * 1000UL);
+    pca9685ResetLog();
+    makeCode(cmd, sizeof(cmd), tok, "c", 2);
+    expect_true(!mqttDispatch(MQTT_TOPIC_CODE, cmd), "token expired at locked clock");
+
+    sessionAuthSetNow(kNow);
+    makeCode(cmd, sizeof(cmd), tok, "c", 2);
+    expect_true(!mqttDispatch(MQTT_TOPIC_CODE, cmd), "NTP rollback does not revive expired tok");
+    expect_true(g_pwm_pulses.empty(), "rollback writes no PWM");
+}
+
+static void test_clock_ignores_ntp_forward_spoof() {
+    beginCase();
+    char tok[192];
+    char cmd[256];
+    makeToken(tok, sizeof(tok), kSid, kIat, kExp);
+    makeCode(cmd, sizeof(cmd), tok, "c", 1);
+    expect_true(mqttDispatch(MQTT_TOPIC_CODE, cmd), "first command at sync time");
+
+    sessionAuthSetNow(kExp + 10000);
+    makeCode(cmd, sizeof(cmd), tok, "c", 2);
+    expect_true(mqttDispatch(MQTT_TOPIC_CODE, cmd), "forward NTP spoof does not expire live tok");
+}
+
+static void test_secret_is_usable() {
+    expect_true(!sessionSecretIsUsable(nullptr), "null secret rejected");
+    expect_true(!sessionSecretIsUsable(""), "empty secret rejected");
+    expect_true(!sessionSecretIsUsable("short-secret"), "15-or-less secret rejected");
+    expect_true(!sessionSecretIsUsable("0123456789abcde"), "15-char secret rejected");
+    expect_true(sessionSecretIsUsable("0123456789abcdef"), "16-char secret accepted");
+    expect_true(!sessionSecretIsUsable("CHANGE_ME"), "CHANGE_ME rejected");
+    expect_true(!sessionSecretIsUsable("CHANGE_ME_SESSION_HMAC_SECRET"), "placeholder rejected");
+    expect_true(sessionSecretIsUsable("native-test-session-hmac-secret"), "test secret accepted");
+}
+
+static void test_mqtt_packet_buffer_has_header_slack() {
+    expect_true(MQTT_PACKET_BUFFER_LEN >= MQTT_CMD_PAYLOAD_LEN + 32,
+                "PubSubClient buffer includes MQTT framing slack");
+}
+
 static void test_chord_angle_map_matches_pi_equivalent_pulses() {
     expect_true(
         pca9685Map(0, SERVO_ANGLE_MIN, SERVO_ANGLE_MAX, CHORD_SERVO_MIN_US, CHORD_SERVO_MAX_US) ==
@@ -411,6 +471,11 @@ int main() {
     test_malformed_json_rejected();
     test_unsynced_clock_fail_closed();
     test_rate_limit();
+    test_numeric_stroke_rejected();
+    test_clock_ignores_ntp_rollback();
+    test_clock_ignores_ntp_forward_spoof();
+    test_secret_is_usable();
+    test_mqtt_packet_buffer_has_header_slack();
     test_chord_angle_map_matches_pi_equivalent_pulses();
 
     if (g_failures != 0) {
