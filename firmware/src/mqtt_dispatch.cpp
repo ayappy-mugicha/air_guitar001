@@ -35,9 +35,22 @@ void mqttTrimPayload(char *message) {
     }
 }
 
+static bool isLegacyPlainStroke(const char *topic, const char *message) {
+    return strcmp(topic, MQTT_TOPIC_STROKE) == 0 &&
+           (strcmp(message, "0") == 0 || strcmp(message, "1") == 0);
+}
+
 bool mqttDispatch(const char *topic, const char *message) {
     if (topic == nullptr || message == nullptr) {
         return false;
+    }
+
+    // Site issue #2 JSON-ifies guitar/code only; guitar/stroke stays plain 0/1.
+    if (isLegacyPlainStroke(topic, message)) {
+        if (!sessionAuthAllowRate()) {
+            return false;
+        }
+        return strokeHandlePayload(message);
     }
 
     SessionCommand cmd;

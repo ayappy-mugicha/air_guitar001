@@ -176,6 +176,7 @@ void mqttAppLoop() {
         connectMqtt();
     }
     mqtt_client.loop();
+    sessionAuthTick();
     logNtpStatus();
     drainMqttCmdQueue();
 }

@@ -39,6 +39,7 @@ void sessionAuthReset(void);
 // wall-clock jumps. Tests that need time to pass should advance SetMillis.
 void sessionAuthSetNow(time_t now);
 void sessionAuthSetMillis(unsigned long ms);
+void sessionAuthTick(void);
 bool sessionSecretIsUsable(const char *secret);
 
 bool sessionAuthVerify(const char *topic, const char *message, SessionCommand *out);

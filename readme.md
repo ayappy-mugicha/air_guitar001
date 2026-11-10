@@ -17,7 +17,7 @@ cp firmware/include/config.example.h firmware/include/config.h
 
 `config.h` に Wi-Fi SSID / パスワードと `SESSION_HMAC_SECRET`（サイト側と同じ秘密鍵、16文字以上、`CHANGE_ME` で始めない）を書き、必要なら MQTT ブローカーやサーボ角を調整します。プレースホルダのままだと起動時に停止し、トークン検証も拒否します。`config.h` は git 管理外です。コード配置・パルス幅・チャンネル番号もすべて `config.h` にあります。
 
-時刻は NTP（`NTP_SERVER_1` / `NTP_SERVER_2`）で同期します。同期前の命令はすべて破棄します。最初の同期後、認証時計は `millis()` で進み、その後の SNTP の巻き戻り／飛びは無視します。シリアルに `NTP: waiting for sync` / `NTP: synced` を出します。
+時刻は NTP（`NTP_SERVER_1` / `NTP_SERVER_2`）で同期します。同期前のコード命令はすべて破棄します。最初の同期後、認証時計は `millis()` の差分蓄積で進み、SNTP の巻き戻り／飛びと 32bit 回り込みでは過去へ戻りません。シリアルに `NTP: waiting for sync` / `NTP: synced` を出します。
 
 ## 書き込み
 
@@ -33,15 +33,15 @@ Arduino IDE を使う場合は `firmware/src` と `firmware/include` をスケ�
 
 ## MQTT
 
-アプリの payload 上限は 256 バイト、PubSubClient のパケットバッファは `MQTT_CMD_PAYLOAD_LEN + 32`（MQTT ヘッダ＋トピック分）です。旧形式（平文のコード名 / `0` / `1` のみ）は受け付けません。
+アプリの payload 上限は 256 バイト、PubSubClient のパケットバッファは `MQTT_CMD_PAYLOAD_LEN + 32`（MQTT ヘッダ＋トピック分）です。平文のコード名は受け付けません。`guitar/stroke` の平文 `0` / `1` はサイト側（MQTTguitarchordwebsite#2 が `guitar/code` のみ JSON 化）との混在デプロイ用に残します。
 
 | トピック | payload |
 | --- | --- |
 | `guitar/code` | `{"v":1,"tok":"<token>","chord":"c","seq":42}` |
-| `guitar/stroke` | `{"v":1,"tok":"<token>","stroke":"0","seq":43}` |
+| `guitar/stroke` | 平文 `0` / `1`、または `{"v":1,"tok":"<token>","stroke":"0","seq":43}` |
 
 - `chord`: `c` `f` `d` `dm` `e` `a` `em` `am` `g` `open`
-- `stroke`: 文字列 `"0"` = down、`"1"` = up。数値の `0` / `1` は型不一致として無言破棄します（`testpub.py` / `session_token.py` と同じ契約）
+- `stroke`: 平文 `0` / `1`、または JSON 文字列 `"0"` = down、`"1"` = up。JSON 数値の `0` / `1` は型不一致として無言破棄します
 - `seq`: 同じ `sid` で前回より大きい整数。新しい `sid` が受理されると、以前の `sid` はトークン期限まで拒否します（共有ギターのセッション交代）
 - `sid` スロット: 期限切れ前の sid を最大 `SESSION_SID_SLOTS`（既定 64）件保持します。埋まったあとの新規セッションは、どれかのトークンが切れるまで拒否します。早期 eviction は再送穴になるためしません。サイト側は 10 分あたりの発行をこの件数未満にしてください
 - トークン: `base64url(payload JSON) + "." + base64url(HMAC-SHA256(秘密鍵, base64url(payload JSON)))`

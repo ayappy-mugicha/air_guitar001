@@ -187,11 +187,24 @@ static void test_increasing_seq_replays_same_chord() {
 static void test_plain_and_missing_token_rejected() {
     beginCase();
     expect_true(!mqttDispatch(MQTT_TOPIC_CODE, "c"), "plain chord name rejected");
-    expect_true(!mqttDispatch(MQTT_TOPIC_STROKE, "0"), "plain stroke rejected");
-    expect_true(g_pwm_pulses.empty(), "legacy plaintext writes no PWM");
+    expect_true(g_pwm_pulses.empty(), "legacy plaintext chord writes no PWM");
 
     expect_true(!mqttDispatch(MQTT_TOPIC_CODE, "{\"v\":1,\"chord\":\"c\",\"seq\":1}"),
                 "JSON without tok rejected");
+}
+
+static void test_legacy_plain_stroke_accepted() {
+    beginCase();
+    expect_true(mqttDispatch(MQTT_TOPIC_STROKE, "0"), "plain stroke 0 accepted");
+    expect_true(mqttDispatch(MQTT_TOPIC_STROKE, "1"), "plain stroke 1 accepted");
+    expect_true(g_pwm_pulses.size() == 2, "plain strokes write PWM");
+    expect_true(g_pwm_pulses[0].pulse_us == STROKE_SERVO_MAX_US, "plain 0 is down");
+    expect_true(g_pwm_pulses[1].pulse_us == STROKE_SERVO_MIN_US, "plain 1 is up");
+
+    pca9685ResetLog();
+    expect_true(!mqttDispatch(MQTT_TOPIC_STROKE, "2"), "plain stroke 2 rejected");
+    expect_true(!mqttDispatch(MQTT_TOPIC_STROKE, "x"), "plain stroke x rejected");
+    expect_true(g_pwm_pulses.empty(), "invalid plain stroke writes no PWM");
 }
 
 static void test_bad_signature_and_expiry_rejected() {
@@ -408,6 +421,25 @@ static void test_clock_ignores_ntp_rollback() {
     expect_true(g_pwm_pulses.empty(), "rollback writes no PWM");
 }
 
+static void test_clock_millis_wrap_does_not_revive_token() {
+    beginCase();
+    char tok[192];
+    char cmd[256];
+    makeToken(tok, sizeof(tok), kSid, kIat, kExp);
+    makeCode(cmd, sizeof(cmd), tok, "c", 1);
+    expect_true(mqttDispatch(MQTT_TOPIC_CODE, cmd), "token valid before wrap");
+
+    sessionAuthSetMillis((unsigned long)(kExp - kNow) * 1000UL);
+    pca9685ResetLog();
+    makeCode(cmd, sizeof(cmd), tok, "c", 2);
+    expect_true(!mqttDispatch(MQTT_TOPIC_CODE, cmd), "token expired before wrap");
+
+    sessionAuthSetMillis(0);
+    makeCode(cmd, sizeof(cmd), tok, "c", 2);
+    expect_true(!mqttDispatch(MQTT_TOPIC_CODE, cmd), "millis wrap does not revive expired tok");
+    expect_true(g_pwm_pulses.empty(), "millis wrap writes no PWM");
+}
+
 static void test_clock_ignores_ntp_forward_spoof() {
     beginCase();
     char tok[192];
@@ -461,6 +493,7 @@ int main() {
     test_valid_chords_and_strokes();
     test_increasing_seq_replays_same_chord();
     test_plain_and_missing_token_rejected();
+    test_legacy_plain_stroke_accepted();
     test_bad_signature_and_expiry_rejected();
     test_seq_replay_and_rewind_rejected();
     test_sid_change_resets_seq();
@@ -473,6 +506,7 @@ int main() {
     test_rate_limit();
     test_numeric_stroke_rejected();
     test_clock_ignores_ntp_rollback();
+    test_clock_millis_wrap_does_not_revive_token();
     test_clock_ignores_ntp_forward_spoof();
     test_secret_is_usable();
     test_mqtt_packet_buffer_has_header_slack();
