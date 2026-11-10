@@ -146,7 +146,7 @@ static void requireSessionSecret() {
     if (sessionSecretIsUsable(SESSION_HMAC_SECRET)) {
         return;
     }
-    Serial.println("SESSION_HMAC_SECRET is missing, shorter than 16 chars, or still CHANGE_ME");
+    Serial.println("SESSION_HMAC_SECRET is missing, shorter than 16 bytes, or still CHANGE_ME");
     Serial.println("Copy config.example.h to config.h and set a real secret. Halted.");
     while (true) {
         delay(5000);

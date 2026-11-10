@@ -15,7 +15,7 @@ Seeed XIAO ESP32C3 が MQTT を購読し、PCA9685 経由でコード押さえ�
 cp firmware/include/config.example.h firmware/include/config.h
 ```
 
-`config.h` に Wi-Fi SSID / パスワードと、サイト側と同じ `SESSION_HMAC_SECRET`（16文字以上）を書きます。プレースホルダのままだと起動時に停止し、トークン検証も拒否します。必要なら MQTT ブローカーやサーボ角を調整します。`config.h` は git 管理外です。コード配置・パルス幅・チャンネル番号もすべて `config.h` にあります。
+`config.h` に Wi-Fi SSID / パスワードと、サイト側と同じ `SESSION_HMAC_SECRET`（16バイト以上）を書きます。プレースホルダのままだと起動時に停止し、トークン検証も拒否します。必要なら MQTT ブローカーやサーボ角を調整します。`config.h` は git 管理外です。コード配置・パルス幅・チャンネル番号もすべて `config.h` にあります。
 
 時刻は NTP（`NTP_SERVER_1` / `NTP_SERVER_2`）で同期します。同期前のコード命令はすべて破棄します。最初の同期後、認証時計は `millis()` の差分蓄積で進み、SNTP の巻き戻り／飛びと 32bit 回り込みでは過去へ戻りません。シリアルは未ロック時だけ `NTP: not synced, chord commands rejected`、ロック後は `NTP: auth clock locked` です。Wi-Fi 再接続で壁時計を取り直しても、ロック済みなら `rejected` とは出しません。
 

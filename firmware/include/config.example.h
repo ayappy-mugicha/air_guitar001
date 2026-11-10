@@ -23,7 +23,7 @@
 
 // --- Session token (HMAC-SHA256) ---
 // Shared with the site that issues visitor tokens. Copy this file to config.h
-// and replace the placeholder with >=16 characters that do not start with
+// and replace the placeholder with >=16 bytes that do not start with
 // CHANGE_ME. Firmware refuses to boot (and rejects tokens) until then.
 // Do not commit the real secret.
 #ifndef SESSION_HMAC_SECRET

@@ -489,7 +489,7 @@ static void test_secret_is_usable() {
     expect_true(!sessionSecretIsUsable(""), "empty secret rejected");
     expect_true(!sessionSecretIsUsable("short-secret"), "15-or-less secret rejected");
     expect_true(!sessionSecretIsUsable("0123456789abcde"), "15-char secret rejected");
-    expect_true(sessionSecretIsUsable("0123456789abcdef"), "16-char secret accepted");
+    expect_true(sessionSecretIsUsable("0123456789abcdef"), "16-byte secret accepted");
     expect_true(!sessionSecretIsUsable("CHANGE_ME"), "CHANGE_ME rejected");
     expect_true(!sessionSecretIsUsable("CHANGE_ME_SESSION_HMAC_SECRET"), "placeholder rejected");
     expect_true(sessionSecretIsUsable("native-test-session-hmac-secret"), "test secret accepted");
