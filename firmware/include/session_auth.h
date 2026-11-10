@@ -40,6 +40,7 @@ void sessionAuthReset(void);
 void sessionAuthSetNow(time_t now);
 void sessionAuthSetMillis(unsigned long ms);
 void sessionAuthTick(void);
+// Samples the auth clock (may lock on the first plausible wall time).
 bool sessionAuthClockLocked(void);
 bool sessionSecretIsUsable(const char *secret);
 

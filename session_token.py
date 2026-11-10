@@ -7,6 +7,23 @@ import json
 import secrets
 import time
 
+SESSION_SECRET_MIN_LEN = 16
+SESSION_SECRET_PLACEHOLDER_PREFIX = "CHANGE_ME"
+
+
+def secret_is_usable(secret) -> bool:
+    """Match firmware sessionSecretIsUsable: reject missing, short, or CHANGE_ME*.
+
+    Firmware measures length with strlen (bytes), so count UTF-8 bytes here
+    too. Counting characters would reject multibyte secrets the firmware
+    accepts (e.g. 8 Japanese characters = 24 bytes).
+    """
+    if not isinstance(secret, str):
+        return False
+    if len(secret.encode("utf-8")) < SESSION_SECRET_MIN_LEN:
+        return False
+    return not secret.startswith(SESSION_SECRET_PLACEHOLDER_PREFIX)
+
 
 def b64url(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode()

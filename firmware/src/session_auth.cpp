@@ -164,6 +164,9 @@ void sessionAuthTick(void) {
 }
 
 bool sessionAuthClockLocked(void) {
+    // Sample wall/millis here so NTP serial (logNtpStatus/syncNtp) cannot
+    // report "rejected" after verifyToken has already locked on the same clock.
+    (void)sessionNow();
     return g_clock_locked;
 }
 
