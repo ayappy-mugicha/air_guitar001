@@ -99,28 +99,22 @@ static void connectWifi() {
 static bool g_ntp_logged_sync = false;
 static unsigned long g_ntp_last_wait_log_ms = 0;
 
-static bool ntpSynced() {
-    return time(nullptr) >= (time_t)SESSION_TIME_MIN;
-}
-
 static void syncNtp() {
     configTime(0, 0, NTP_SERVER_1, NTP_SERVER_2);
+    if (sessionAuthClockLocked()) {
+        // Wi-Fi reconnect may restart SNTP. Auth still uses the locked millis clock.
+        Serial.println("NTP: wall resync requested (auth clock stays locked)");
+        return;
+    }
     g_ntp_logged_sync = false;
     g_ntp_last_wait_log_ms = 0;
-    Serial.println("NTP: waiting for sync (commands rejected until then)");
+    Serial.println("NTP: waiting for sync (chord commands rejected until auth clock locks)");
 }
 
 static void logNtpStatus() {
     if (sessionAuthClockLocked()) {
         if (!g_ntp_logged_sync) {
             Serial.println("NTP: auth clock locked (later SNTP jumps ignored)");
-            g_ntp_logged_sync = true;
-        }
-        return;
-    }
-    if (ntpSynced()) {
-        if (!g_ntp_logged_sync) {
-            Serial.printf("NTP: wall clock ready unix=%ld\n", (long)time(nullptr));
             g_ntp_logged_sync = true;
         }
         return;

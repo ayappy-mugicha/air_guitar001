@@ -46,6 +46,8 @@ bool mqttDispatch(const char *topic, const char *message) {
     }
 
     // Site issue #2 JSON-ifies guitar/code only; guitar/stroke stays plain 0/1.
+    // Festival threat model: this path needs no tok/NTP. Anyone on the public
+    // broker can move the stroke servo. Chord commands stay token-gated.
     if (isLegacyPlainStroke(topic, message)) {
         if (!sessionAuthAllowRate()) {
             return false;
