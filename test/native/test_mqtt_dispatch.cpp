@@ -455,6 +455,22 @@ static void test_clock_lock_survives_wall_rollback() {
     expect_true(sessionAuthClockLocked(), "wall rollback does not unlock auth clock");
 }
 
+static void test_clock_locked_samples_wall_like_ntp_log() {
+    // mqtt_app logNtpStatus/syncNtp read sessionAuthClockLocked() without a
+    // separate tick. If the helper only returns a stale flag, serial can say
+    // "commands rejected" while verifyToken already locked on the same wall.
+    sessionAuthReset();
+    sessionAuthSetNow(0);
+    sessionAuthSetMillis(0);
+    expect_true(!sessionAuthClockLocked(), "unsynced wall stays unlocked without tick");
+
+    sessionAuthSetNow(kNow);
+    expect_true(sessionAuthClockLocked(), "lock status samples wall for NTP logs");
+
+    sessionAuthSetNow(0);
+    expect_true(sessionAuthClockLocked(), "NTP log helper stays locked after wall rollback");
+}
+
 static void test_clock_ignores_ntp_forward_spoof() {
     beginCase();
     char tok[192];
@@ -523,6 +539,7 @@ int main() {
     test_clock_ignores_ntp_rollback();
     test_clock_millis_wrap_does_not_revive_token();
     test_clock_lock_survives_wall_rollback();
+    test_clock_locked_samples_wall_like_ntp_log();
     test_clock_ignores_ntp_forward_spoof();
     test_secret_is_usable();
     test_mqtt_packet_buffer_has_header_slack();

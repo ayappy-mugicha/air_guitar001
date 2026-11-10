@@ -7,6 +7,18 @@ import json
 import secrets
 import time
 
+SESSION_SECRET_MIN_LEN = 16
+SESSION_SECRET_PLACEHOLDER_PREFIX = "CHANGE_ME"
+
+
+def secret_is_usable(secret) -> bool:
+    """Match firmware sessionSecretIsUsable: reject missing, short, or CHANGE_ME*."""
+    if not isinstance(secret, str):
+        return False
+    if len(secret) < SESSION_SECRET_MIN_LEN:
+        return False
+    return not secret.startswith(SESSION_SECRET_PLACEHOLDER_PREFIX)
+
 
 def b64url(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
