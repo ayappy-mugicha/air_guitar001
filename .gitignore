@@ -5,4 +5,4 @@ WiringPi
 .vscode
 *.so
 /firmware/include/config.h
-/test/native/test_mqtt_dispatch
+test\native\test_mqtt_dispatch.exe
