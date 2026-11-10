@@ -440,6 +440,21 @@ static void test_clock_millis_wrap_does_not_revive_token() {
     expect_true(g_pwm_pulses.empty(), "millis wrap writes no PWM");
 }
 
+static void test_clock_lock_survives_wall_rollback() {
+    sessionAuthReset();
+    sessionAuthSetNow(0);
+    sessionAuthSetMillis(0);
+    sessionAuthTick();
+    expect_true(!sessionAuthClockLocked(), "unsynced wall does not lock");
+
+    sessionAuthSetNow(kNow);
+    sessionAuthTick();
+    expect_true(sessionAuthClockLocked(), "tick locks after plausible wall");
+
+    sessionAuthSetNow(0);
+    expect_true(sessionAuthClockLocked(), "wall rollback does not unlock auth clock");
+}
+
 static void test_clock_ignores_ntp_forward_spoof() {
     beginCase();
     char tok[192];
@@ -507,6 +522,7 @@ int main() {
     test_numeric_stroke_rejected();
     test_clock_ignores_ntp_rollback();
     test_clock_millis_wrap_does_not_revive_token();
+    test_clock_lock_survives_wall_rollback();
     test_clock_ignores_ntp_forward_spoof();
     test_secret_is_usable();
     test_mqtt_packet_buffer_has_header_slack();

@@ -160,7 +160,11 @@ void sessionAuthSetMillis(unsigned long ms) {
 }
 
 void sessionAuthTick(void) {
-    sessionAdvanceMillis(sessionMillis());
+    (void)sessionNow();
+}
+
+bool sessionAuthClockLocked(void) {
+    return g_clock_locked;
 }
 
 bool sessionSecretIsUsable(const char *secret) {

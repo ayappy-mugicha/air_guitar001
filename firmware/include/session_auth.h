@@ -40,6 +40,7 @@ void sessionAuthReset(void);
 void sessionAuthSetNow(time_t now);
 void sessionAuthSetMillis(unsigned long ms);
 void sessionAuthTick(void);
+bool sessionAuthClockLocked(void);
 bool sessionSecretIsUsable(const char *secret);
 
 bool sessionAuthVerify(const char *topic, const char *message, SessionCommand *out);

@@ -111,17 +111,25 @@ static void syncNtp() {
 }
 
 static void logNtpStatus() {
-    if (ntpSynced()) {
+    if (sessionAuthClockLocked()) {
         if (!g_ntp_logged_sync) {
-            Serial.printf("NTP: synced unix=%ld\n", (long)time(nullptr));
+            Serial.println("NTP: auth clock locked (later SNTP jumps ignored)");
             g_ntp_logged_sync = true;
         }
         return;
     }
+    if (ntpSynced()) {
+        if (!g_ntp_logged_sync) {
+            Serial.printf("NTP: wall clock ready unix=%ld\n", (long)time(nullptr));
+            g_ntp_logged_sync = true;
+        }
+        return;
+    }
+    g_ntp_logged_sync = false;
     const unsigned long now = millis();
     if (g_ntp_last_wait_log_ms == 0 || now - g_ntp_last_wait_log_ms >= 5000UL) {
         g_ntp_last_wait_log_ms = now;
-        Serial.println("NTP: not synced, commands rejected");
+        Serial.println("NTP: not synced, chord commands rejected");
     }
 }
 
