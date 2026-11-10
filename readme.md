@@ -1,11 +1,11 @@
 # XIAO ESP32 ギターコントローラ
 
-Seeed XIAO ESP32S3 が MQTT を購読し、PCA9685 経由でコード押さえサーボとストロークサーボを動かします。トピックとコード名は Raspberry Pi Zero 版と同じです。
+Seeed XIAO ESP32C3 が MQTT を購読し、PCA9685 経由でコード押さえサーボとストロークサーボを動かします。トピックとコード名は Raspberry Pi Zero 版と同じです。
 
 ## 配線
 
 - PCA9685 I2C アドレス: `0x40`
-- XIAO ESP32S3: SDA = D4、SCL = D5（`config.h` の `I2C_SDA_PIN` / `I2C_SCL_PIN` で変更）
+- XIAO ESP32C3: SDA = D4、SCL = D5（`config.h` の `I2C_SDA_PIN` / `I2C_SCL_PIN` で変更）
 - コード用サーボ: チャンネル 4–7
 - ストローク用サーボ: チャンネル 8
 
@@ -19,7 +19,7 @@ cp firmware/include/config.example.h firmware/include/config.h
 
 ## 書き込み
 
-[PlatformIO](https://platformio.org/) を使い、ボード `seeed_xiao_esp32s3` 向けにビルドします。
+[PlatformIO](https://platformio.org/) を使い、ボード `seeed_xiao_esp32c3` 向けにビルドします。
 
 ```bash
 pio run
@@ -27,7 +27,7 @@ pio run -t upload
 pio device monitor
 ```
 
-Arduino IDE を使う場合は `firmware/src` と `firmware/include` をスケッチへコピーし、ライブラリ **Adafruit PWM Servo Driver Library** と **PubSubClient** を入れてください。ボードは Seeed XIAO ESP32S3、別チップ（C3 / C6）は `platformio.ini` の `board` と I2C ピンを合わせてください。
+Arduino IDE を使う場合は `firmware/src` と `firmware/include` をスケッチへコピーし、ライブラリ **Adafruit PWM Servo Driver Library** と **PubSubClient** を入れてください。ボードは Seeed XIAO ESP32C3、別チップ（S3 / C6）を使う場合は `platformio.ini` の `board` と I2C ピンを合わせてください。
 
 ## MQTT
 
