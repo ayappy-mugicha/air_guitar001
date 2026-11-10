@@ -19,7 +19,7 @@ cp firmware/include/config.example.h firmware/include/config.h
 
 ## 書き込み
 
-[PlatformIO](https://platformio.org/) を使い、ボード `seeed_xiao_esp32c3` 向けにビルドします。
+[PlatformIO](https://platformio.org/) を使い、ボード `seeed_xiao_esp32c3` 向けにビルドします。別チップ（S3 / C6）を使う場合は `platformio.ini` の `board` と、`config.h` の `I2C_SDA_PIN` / `I2C_SCL_PIN` をそのチップに合わせてください。
 
 ```bash
 pio run
@@ -27,7 +27,7 @@ pio run -t upload
 pio device monitor
 ```
 
-Arduino IDE を使う場合は `firmware/src` と `firmware/include` をスケッチへコピーし、ライブラリ **Adafruit PWM Servo Driver Library** と **PubSubClient** を入れてください。ボードは Seeed XIAO ESP32C3、別チップ（S3 / C6）を使う場合は `platformio.ini` の `board` と I2C ピンを合わせてください。
+Arduino IDE を使う場合は `firmware/src` と `firmware/include` をスケッチへコピーし、ライブラリ **Adafruit PWM Servo Driver Library** と **PubSubClient** を入れてください。ボード選択は Seeed XIAO ESP32C3 にしてください。別チップを使う場合は、IDE のボード選択と `config.h` の I2C ピンを合わせてください。
 
 ## MQTT
 
