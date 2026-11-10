@@ -22,7 +22,7 @@
 #define MQTT_RECONNECT_DELAY_MS 2000
 
 // --- I2C / PCA9685 ---
-// Seeed XIAO ESP32S3 defaults: D4 = SDA, D5 = SCL
+// Seeed XIAO ESP32C3 defaults: D4 = SDA, D5 = SCL
 #ifndef I2C_SDA_PIN
 #define I2C_SDA_PIN SDA
 #endif
