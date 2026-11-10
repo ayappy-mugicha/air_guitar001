@@ -1,6 +1,6 @@
 # XIAO ESP32 ギターコントローラ
 
-Seeed XIAO ESP32C3 が MQTT を購読し、PCA9685 経由でコード押さえサーボとストロークサーボを動かします。トピックとコード名は Raspberry Pi Zero 版と同じです。
+Seeed XIAO ESP32C3 が MQTT を購読し、PCA9685 経由でコード押さえサーボとストロークサーボを動かします。来場者セッションの命令だけを通すため、payload は HMAC-SHA256 付きトークン付き JSON です。コード名の集合は Raspberry Pi Zero 版と同じです。
 
 ## 配線
 
@@ -15,7 +15,9 @@ Seeed XIAO ESP32C3 が MQTT を購読し、PCA9685 経由でコード押さえ�
 cp firmware/include/config.example.h firmware/include/config.h
 ```
 
-`config.h` に Wi-Fi SSID / パスワードを書き、必要なら MQTT ブローカーやサーボ角を調整します。コード配置・パルス幅・チャンネル番号もすべて `config.h` にあります。
+`config.h` に Wi-Fi SSID / パスワードと `SESSION_HMAC_SECRET`（サイト側と同じ秘密鍵）を書き、必要なら MQTT ブローカーやサーボ角を調整します。`config.h` は git 管理外です。コード配置・パルス幅・チャンネル番号もすべて `config.h` にあります。
+
+時刻は NTP（`NTP_SERVER_1` / `NTP_SERVER_2`）で同期します。同期前の命令はすべて破棄します。
 
 ## 書き込み
 
@@ -31,10 +33,18 @@ Arduino IDE を使う場合は `firmware/src` と `firmware/include` をスケ�
 
 ## MQTT
 
+受信バッファは PubSubClient 既定の 256 バイトです。旧形式（平文のコード名 / `0` / `1` のみ）は受け付けません。
+
 | トピック | payload |
 | --- | --- |
-| `guitar/code` | `c` `f` `d` `dm` `e` `a` `em` `am` `g` `open` |
-| `guitar/stroke` | `0` = down、`1` = up |
+| `guitar/code` | `{"v":1,"tok":"<token>","chord":"c","seq":42}` |
+| `guitar/stroke` | `{"v":1,"tok":"<token>","stroke":"0","seq":43}` |
+
+- `chord`: `c` `f` `d` `dm` `e` `a` `em` `am` `g` `open`
+- `stroke`: `"0"` = down、`"1"` = up
+- `seq`: 同じ `sid` で前回より大きい整数。新しい `sid` が受理されると、以前の `sid` はトークン期限まで拒否します（共有ギターのセッション交代）
+- トークン: `base64url(payload JSON) + "." + base64url(HMAC-SHA256(秘密鍵, base64url(payload JSON)))`
+- トークン payload: `{"sid":"<hex32>","iat":<unix>,"exp":<iat+600>}`
 
 ブローカー既定: `broker.hivemq.com:1883`
 
@@ -42,7 +52,21 @@ Arduino IDE を使う場合は `firmware/src` と `firmware/include` をスケ�
 
 ```bash
 pip install paho-mqtt
+cp firmware/include/config.example.h firmware/include/config.h  # 未作成なら
+export SESSION_HMAC_SECRET='CHANGE_ME_SESSION_HMAC_SECRET'     # config.h と同じ値
 python testpub.py
 ```
 
-`testpub.py` は `mqttpub.py` / `mqttsys.py` を使います。Raspberry Pi 用の C / Python 実行系は `old/` にあります。
+`testpub.py` は `mqttpub.py` / `mqttsys.py` / `session_token.py` を使います。Raspberry Pi 用の C / Python 実行系は `old/` にあります。
+
+ホスト側の受信ロジック確認:
+
+```bash
+cp firmware/include/config.example.h firmware/include/config.h
+g++ -std=c++17 -I firmware/include -I test/native \
+  firmware/src/mqtt_dispatch.cpp firmware/src/session_auth.cpp \
+  firmware/src/chords.cpp firmware/src/stroke.cpp \
+  test/native/pca9685_stub.cpp test/native/hmac_sha256.cpp \
+  test/native/test_mqtt_dispatch.cpp \
+  -o /tmp/test_mqtt_dispatch && /tmp/test_mqtt_dispatch
+```
