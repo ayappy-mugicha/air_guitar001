@@ -68,3 +68,7 @@ python render_guide_sheet.py
 https://github.com/ayappy-mugicha/MQTTguitarchordwebsite)
 
 HTML は `assets/guide-sheet.html`、PDF は `assets/guide.pdf`（横A4）。Chrome/Chromium が必要。
+
+### スタッフ用PIN設定
+
+Webサイトの当日PINは、スタッフPCから `tools/Set-GuitarPin.ps1` で設定できます。事前準備と実行方法は [`tools/README.md`](tools/README.md) を参照してください。認証情報はローカルの `.env` だけに置き、Gitへコミットしないでください。
